@@ -1,0 +1,436 @@
+PRD: Docs AI Discoverability Scorer (DAIDS)
+1) Overview
+
+Product Name: Docs AI Discoverability Scorer (DAIDS)
+What it does: Takes any docs URL, crawls it like an AI indexing agent would, and outputs a score out of 100 showing how primed the docs are for AI discoverability and agent usability.
+
+Primary user: DevRel, Developer Experience, Docs teams, Technical Writers, Product Engineers
+Core promise: “Paste your docs URL, get an honest AI readiness score and a prioritized fix list.”
+
+2) Goals
+Product goals
+
+Produce a trustworthy AI discoverability score (0–100) for a docs site
+
+Break down the score into clear categories
+
+Provide a high signal improvement plan (what’s good, what’s bad, what to fix first)
+
+Run as CLI + API, and later power a web UI
+
+Non goals
+
+Not measuring “general SEO performance”
+
+Not measuring “website performance” like Lighthouse (speed, CLS, etc.)
+
+Not measuring “human writing style quality” beyond what affects agent discoverability and retrieval
+
+Not building a full knowledgebase or chatbot
+
+3) User stories
+Core user stories
+
+As a docs owner, I want to paste my docs URL and get an overall AI readiness score so I know where I stand.
+
+As a docs owner, I want category scores so I know what kind of fixes matter most.
+
+As a docs owner, I want specific failing URLs and reasons so I can fix issues quickly.
+
+As a docs owner, I want a top 10 prioritized list so I can improve score with minimal effort.
+
+As a team, I want a JSON output so I can track improvements over time and gate releases.
+
+Secondary user stories
+
+As a tool user, I want an API so I can integrate scoring into CI or dashboards.
+
+As a team, I want to rerun scans and compare results between two versions of docs.
+
+4) Success metrics
+
+Audit run completes in under 60 seconds for <= 150 pages on typical docs sites
+
+Less than 5% crawl failure rate on stable public docs sites
+
+Users can identify top 3 improvements immediately from the report
+
+Repeat runs produce stable scores (minimal random variance)
+
+5) Inputs and outputs
+Inputs
+
+rootUrl (required)
+
+maxPages (optional, default 150)
+
+maxDepth (optional, default 3)
+
+concurrency (optional, default 8)
+
+userAgent (optional default docs-ai-audit/1.0)
+
+timeoutMs (optional default 12000)
+
+Outputs (minimum)
+
+overall score out of 100
+
+category scores and findings
+
+top findings prioritized
+
+basic meta (pages crawled, chunk count, run time)
+
+6) Scoring model (AI discoverability only)
+Overall score: 0–100
+
+Score is a weighted sum of 5 categories
+
+Default equal weights: 20 points each
+
+Convert total points to 0–100
+
+Categories (each max 20)
+A) Agent discovery readiness (20)
+
+How easy it is for agents to discover and understand the docs pages at a glance.
+
+Example checks:
+
+missing <title>
+
+missing meta description
+
+missing canonical
+
+obvious duplication patterns (query params, trailing slash conflicts)
+
+internal broken links rate (basic)
+
+B) Structure and chunkability (20)
+
+How well the docs chunk into stable, meaningful retrieval units.
+
+Example checks:
+
+exactly one H1 per page
+
+heading structure exists and is consistent
+
+extremely large pages that chunk poorly
+
+pages with too few headings
+
+C) Retrieval self containment (20)
+
+Whether chunks can stand alone when retrieved by an agent.
+
+Example checks:
+
+pages too thin to be useful
+
+chunks are overly short or overly long
+
+vague references (“this”, “it”, “here”) heavy ratio on small chunks
+
+D) Agent usability for developers (20)
+
+Whether agents can recommend and apply examples correctly.
+
+Example checks:
+
+code blocks present
+
+code blocks tagged with language
+
+presence of “example density”
+
+missing code language tags
+
+E) Trust and freshness signals (20)
+
+Whether agents can trust the docs are maintained and safe to recommend.
+
+Example checks:
+
+last updated signals (time tag, modified_time meta, updated text cues)
+
+changelog / release notes presence cues
+
+structured data presence (optional weak signal)
+
+7) Core workflow (system behavior)
+Step 1: Crawl
+
+Start from rootUrl
+
+Attempt sitemap discovery:
+
+/sitemap.xml, /sitemap_index.xml, /sitemap/sitemap.xml
+
+Load robots.txt if present
+
+Crawl internal links only
+
+Deduplicate normalized URLs:
+
+remove hash fragments
+
+remove tracking params (utm, ref)
+
+normalize trailing slash
+
+Limits:
+
+stop at maxPages
+
+stop at maxDepth
+
+Step 2: Extract
+
+For each crawled page:
+
+parse HTML
+
+extract:
+
+title
+
+canonical
+
+meta description
+
+headings tree (H1–H6)
+
+code blocks and language tags
+
+internal links
+
+main content text (boilerplate removed)
+
+Step 3: Chunk
+
+Chunking rules:
+
+chunk by size if exact heading splitting is not available
+
+default chunk max size based on character threshold
+
+compute token estimates for chunks
+
+Step 4: Score
+
+Run category checks across extracted pages and chunks
+
+Build findings list including:
+
+severity (low, med, high)
+
+message
+
+affected URLs (top 10)
+
+Step 5: Return results
+
+Return JSON response with:
+
+overall score
+
+categories
+
+top findings
+
+meta
+
+8) Functional requirements
+CLI
+
+Command: docs-ai-audit <url>
+
+Outputs JSON to stdout
+
+Supports config options:
+
+--maxPages
+
+--maxDepth
+
+--concurrency
+
+--timeoutMs
+
+API
+
+Endpoint: POST /audit
+
+Request:
+
+{ url: string, maxPages?: number }
+
+Response:
+
+full audit result JSON
+
+Reliability and safety
+
+Should not crawl external domains
+
+Should not execute scripts (no JS runtime required in MVP)
+
+Should handle errors gracefully and continue scanning
+
+9) Non functional requirements
+Performance
+
+Default scan <= 150 pages
+
+Concurrency default 8
+
+Timeouts enforced
+
+Observability
+
+Include run duration in meta
+
+Include error counts
+
+Include skipped pages count
+
+Security
+
+Input URL validation required
+
+Avoid SSRF patterns:
+
+block localhost, 127.0.0.1, internal IP ranges by default
+
+block non-http/https protocols
+
+10) Edge cases
+
+Docs site is SPA and content is mostly rendered by JS
+
+MVP: may score lower due to extraction quality
+
+If main content text is suspiciously empty across many pages, return warning: “JS-rendered docs detected”
+
+Sites without sitemap
+
+still crawl via internal links from root page
+
+Pages with non-HTML content type (PDF, JSON)
+
+skip and note
+
+11) Report format (JSON schema)
+{
+  "rootUrl": "https://docs.example.com",
+  "crawledPages": 120,
+  "score": 78,
+  "categories": [
+    {
+      "name": "Agent discovery readiness",
+      "score": 16,
+      "max": 20,
+      "findings": [
+        {
+          "severity": "high",
+          "message": "Some pages are missing a title tag.",
+          "urls": ["https://docs.example.com/page"]
+        }
+      ]
+    }
+  ],
+  "topFindings": [
+    {
+      "severity": "high",
+      "message": "Structure and chunkability: Some pages do not have exactly one H1.",
+      "urls": ["https://docs.example.com/bad-page"]
+    }
+  ],
+  "meta": {
+    "chunkCount": 400,
+    "durationMs": 42000,
+    "errorCount": 3
+  }
+}
+
+12) Implementation plan
+Phase 1 (MVP, 1–2 days for an AI agent)
+
+CLI runs audit and prints JSON
+
+Crawl + extract + chunk + score
+
+5 categories, 20–40 checks total
+
+Phase 2 (Hardening, 2–4 days)
+
+API mode (Express)
+
+Improve URL normalization and deduping
+
+Add internal broken link detection
+
+Add “JS docs detected” warning
+
+Add better chunking by heading tags
+
+Phase 3 (Web UI, optional)
+
+simple web form to paste URL
+
+show category cards
+
+show top fixes with affected URLs
+
+13) Acceptance criteria
+
+A run is considered successful when:
+
+Given a valid docs URL, tool returns a JSON report with:
+
+overall score out of 100
+
+5 category scores
+
+at least 1 finding when issues exist
+
+Tool respects:
+
+maxPages
+
+maxDepth
+
+internal links only
+
+Tool completes within 60 seconds for <=150 pages on a normal docs site.
+
+Tool never crashes on a single broken page. It continues and reports partial scan.
+
+14) Tech stack requirements (recommended)
+
+Node.js 20+
+
+TypeScript
+
+HTML parsing: Cheerio
+
+Concurrency limiting: p-limit
+
+CLI: commander
+
+API: Express
+
+Validation: Zod
+
+15) Deliverables
+
+docs-ai-audit CLI tool
+
+POST /audit API server
+
+JSON result output
+
+README with usage examples
