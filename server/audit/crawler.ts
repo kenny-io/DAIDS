@@ -4,6 +4,8 @@ import { isSSRFSafe, normalizeUrl, isSameOrigin, getPathDepth, getSitemapUrls } 
 import { extractPageData } from "./extractor";
 import * as cheerio from "cheerio";
 
+const MAX_REDIRECTS = 5;
+
 async function fetchWithTimeout(
   url: string,
   timeoutMs: number,
@@ -13,24 +15,50 @@ async function fetchWithTimeout(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": userAgent,
-        Accept: "text/html,application/xhtml+xml",
-      },
-      redirect: "follow",
-    });
+    let currentUrl = url;
+    let redirectCount = 0;
 
-    clearTimeout(timeoutId);
+    while (redirectCount < MAX_REDIRECTS) {
+      const ssrfCheck = await isSSRFSafe(currentUrl);
+      if (!ssrfCheck.safe) {
+        clearTimeout(timeoutId);
+        return { error: `SSRF protection: ${ssrfCheck.reason}` };
+      }
 
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) {
-      return { error: `Non-HTML content type: ${contentType}` };
+      const response = await fetch(currentUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": userAgent,
+          Accept: "text/html,application/xhtml+xml",
+        },
+        redirect: "manual",
+      });
+
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("location");
+        if (!location) {
+          clearTimeout(timeoutId);
+          return { error: "Redirect without location header" };
+        }
+
+        currentUrl = new URL(location, currentUrl).toString();
+        redirectCount++;
+        continue;
+      }
+
+      clearTimeout(timeoutId);
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) {
+        return { error: `Non-HTML content type: ${contentType}` };
+      }
+
+      const html = await response.text();
+      return { html, statusCode: response.status };
     }
 
-    const html = await response.text();
-    return { html, statusCode: response.status };
+    clearTimeout(timeoutId);
+    return { error: "Too many redirects" };
   } catch (e: any) {
     clearTimeout(timeoutId);
     if (e.name === "AbortError") {

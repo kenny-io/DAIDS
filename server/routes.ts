@@ -5,10 +5,10 @@ import { z } from "zod";
 
 const AuditRequestSchema = z.object({
   url: z.string().url(),
-  maxPages: z.number().int().positive().optional(),
-  maxDepth: z.number().int().positive().optional(),
-  concurrency: z.number().int().positive().optional(),
-  timeoutMs: z.number().int().positive().optional(),
+  maxPages: z.coerce.number().int().positive().optional(),
+  maxDepth: z.coerce.number().int().positive().optional(),
+  concurrency: z.coerce.number().int().positive().optional(),
+  timeoutMs: z.coerce.number().int().positive().optional(),
   userAgent: z.string().optional(),
 });
 
