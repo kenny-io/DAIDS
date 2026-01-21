@@ -239,7 +239,7 @@ function scoreRetrievalSelfContainment(
       createFinding(
         ratio > 0.3 ? "med" : "low",
         `${shortChunks.length} chunks are very short and may lack context.`,
-        [...new Set(shortChunks.map((c) => c.pageUrl))].slice(0, TOP_URLS_LIMIT)
+        Array.from(new Set(shortChunks.map((c) => c.pageUrl))).slice(0, TOP_URLS_LIMIT)
       )
     );
   }
@@ -252,7 +252,7 @@ function scoreRetrievalSelfContainment(
       createFinding(
         ratio > 0.2 ? "med" : "low",
         `${longChunks.length} chunks are very long and may exceed context limits.`,
-        [...new Set(longChunks.map((c) => c.pageUrl))].slice(0, TOP_URLS_LIMIT)
+        Array.from(new Set(longChunks.map((c) => c.pageUrl))).slice(0, TOP_URLS_LIMIT)
       )
     );
   }
@@ -272,7 +272,7 @@ function scoreRetrievalSelfContainment(
       createFinding(
         "low",
         `${chunksWithVagueRefs.length} small chunks have high vague reference density.`,
-        [...new Set(chunksWithVagueRefs.map((c) => c.pageUrl))].slice(0, TOP_URLS_LIMIT)
+        Array.from(new Set(chunksWithVagueRefs.map((c) => c.pageUrl))).slice(0, TOP_URLS_LIMIT)
       )
     );
   }
@@ -320,7 +320,7 @@ function scoreAgentUsability(pages: ExtractedPage[]): CategoryResult {
       createFinding(
         ratio > 0.5 ? "high" : "med",
         `${untaggedCodeBlocks.length} code blocks are missing language tags.`,
-        [...new Set(untaggedCodeBlocks.map((c) => c.pageUrl))].slice(0, TOP_URLS_LIMIT)
+        Array.from(new Set(untaggedCodeBlocks.map((c) => c.pageUrl))).slice(0, TOP_URLS_LIMIT)
       )
     );
   }

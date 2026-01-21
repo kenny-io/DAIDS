@@ -89,7 +89,7 @@ async function fetchSitemap(
     const text = await response.text();
     const urls: string[] = [];
 
-    const locMatches = text.matchAll(/<loc>([^<]+)<\/loc>/gi);
+    const locMatches = Array.from(text.matchAll(/<loc>([^<]+)<\/loc>/gi));
     for (const match of locMatches) {
       const url = match[1].trim();
       if (url.endsWith(".xml")) {

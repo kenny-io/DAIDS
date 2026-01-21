@@ -241,7 +241,7 @@ export default function Home() {
   const auditMutation = useMutation({
     mutationFn: async (request: AuditRequest) => {
       const response = await apiRequest("POST", "/api/audit", request);
-      return response as AuditResult;
+      return await response.json() as AuditResult;
     },
     onError: (error: Error) => {
       toast({
