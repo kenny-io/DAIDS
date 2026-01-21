@@ -1,6 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { runAudit, AuditConfigSchema } from "./audit";
+import { analyticsStore } from "./analytics";
+import { generateMarkdown } from "./export";
 import { z } from "zod";
 
 const AuditRequestSchema = z.object({
@@ -31,6 +33,8 @@ export async function registerRoutes(
 
       const result = await runAudit(parsed.data);
 
+      analyticsStore.recordAudit(result);
+
       res.json(result);
     } catch (error: any) {
       const isSSRFError = error.message?.includes("SSRF");
@@ -39,6 +43,58 @@ export async function registerRoutes(
       res.status(statusCode).json({
         error: true,
         message: error.message || "An error occurred during the audit",
+      });
+    }
+  });
+
+  app.post("/api/export/markdown", async (req: Request, res: Response) => {
+    try {
+      const result = req.body;
+
+      if (!result || !result.rootUrl || !result.categories) {
+        res.status(400).json({
+          error: true,
+          message: "Invalid audit result data",
+        });
+        return;
+      }
+
+      const markdown = generateMarkdown(result);
+
+      res.setHeader("Content-Type", "text/markdown");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="audit-report-${new Date().toISOString().split("T")[0]}.md"`
+      );
+      res.send(markdown);
+    } catch (error: any) {
+      res.status(500).json({
+        error: true,
+        message: error.message || "Failed to generate export",
+      });
+    }
+  });
+
+  app.get("/api/analytics", (_req: Request, res: Response) => {
+    try {
+      const summary = analyticsStore.getSummary();
+      res.json(summary);
+    } catch (error: any) {
+      res.status(500).json({
+        error: true,
+        message: error.message || "Failed to fetch analytics",
+      });
+    }
+  });
+
+  app.get("/api/analytics/all", (_req: Request, res: Response) => {
+    try {
+      const entries = analyticsStore.getAll();
+      res.json(entries);
+    } catch (error: any) {
+      res.status(500).json({
+        error: true,
+        message: error.message || "Failed to fetch analytics",
       });
     }
   });
