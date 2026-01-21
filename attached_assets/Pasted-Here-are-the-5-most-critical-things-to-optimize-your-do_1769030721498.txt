@@ -1,0 +1,44 @@
+Here are the 5 most critical things to optimize your documentation for AI agent discovery and recommendation:
+1. Implement Clear, Semantic Structure with Machine-Readable Metadata
+Add structured data that AI agents can easily parse. Use JSON-LD schema markup for technical documentation, clear heading hierarchies (H1-H6), and semantic HTML. Include metadata like:
+
+Product/API version numbers
+Last updated dates
+Tags for categorization
+Difficulty levels or user personas
+
+AI agents rely heavily on structure to understand context and relevance. Consider adding a robots.txt and XML sitemap optimized for AI crawlers.
+2. Create Comprehensive, Self-Contained Pages with Direct Answers
+Each documentation page should answer questions completely without requiring users to jump between multiple pages. AI agents often extract information from single pages, so include:
+
+Clear problem statements at the top
+Complete code examples that actually work
+Prerequisites and dependencies listed explicitly
+Expected outputs and common errors
+
+Avoid splitting basic concepts across multiple pages. Think "one topic, one comprehensive resource."
+3. Add an AI-Optimized API Reference in OpenAPI/Swagger Format
+Provide machine-readable API specifications using OpenAPI 3.0+ or similar standards. This allows AI agents to:
+
+Understand your API capabilities programmatically
+Generate accurate code examples
+Recommend your product for specific use cases
+
+Include detailed descriptions for every endpoint, parameter, and response code. The more complete your OpenAPI spec, the better agents can recommend your API.
+4. Include Practical, Copy-Paste Ready Code Examples in Multiple Languages
+AI agents frequently recommend tools based on code example quality. Provide:
+
+Working code snippets that require minimal modification
+Examples in the most popular languages for your domain
+Both "quick start" and "advanced use case" examples
+Comments explaining why, not just what
+
+Test all code examples regularly to ensure they work. Broken examples severely hurt AI recommendations.
+5. Create a Clear "Use Cases" or "Solutions" Section
+AI agents need to understand when to recommend your product. Create dedicated pages that map problems to solutions:
+
+"Use Case: Real-time Data Processing with [Your Product]"
+"How to Migrate from [Competitor] to [Your Product]"
+Comparison tables with other tools in your space
+
+Use natural language that matches how developers search and ask questions. Think about the questions people ask AI agents like "How do I build X?" and structure content to answer those directly.

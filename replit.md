@@ -10,12 +10,15 @@ DAIDS crawls documentation sites like an AI indexing agent would and produces a 
 
 - **CLI Tool**: Run audits from the command line
 - **REST API**: POST /api/audit endpoint for programmatic access
-- **5 Scoring Categories**:
-  1. Agent discovery readiness (titles, meta descriptions, canonicals)
-  2. Structure and chunkability (headings, page structure)
-  3. Retrieval self-containment (chunk quality, context)
-  4. Agent usability for developers (code examples, language tags)
-  5. Trust and freshness signals (last updated, changelogs)
+- **Web UI**: Lighthouse-style professional interface with score gauge
+- **Export**: Markdown and PDF report generation
+- **Analytics**: Usage tracking dashboard at /analytics
+- **5 Scoring Categories** (AI Agent Focused):
+  1. AI Crawl Accessibility (llms.txt, robots.txt, sitemap.xml, /ai landing page)
+  2. Structured Data & Machine Readability (JSON-LD, OpenAPI specs, meta tags)
+  3. Content Self-Containment (FAQ sections, prerequisites, complete pages)
+  4. Code & API Usability (language-tagged code blocks, multi-language examples)
+  5. Documentation Architecture (internal linking, heading hierarchy, freshness signals)
 
 ## Security
 
@@ -78,15 +81,22 @@ Content-Type: application/json
 ```
 server/
   audit/
-    types.ts      - TypeScript interfaces and Zod schemas
-    url-utils.ts  - URL normalization and SSRF protection
-    crawler.ts    - Site crawler with concurrency control
-    extractor.ts  - HTML content extraction
-    chunker.ts    - Content chunking logic
-    scorer.ts     - 5-category scoring system
-    index.ts      - Main audit runner
-  cli.ts          - Commander CLI tool
-  routes.ts       - Express API routes
+    types.ts         - TypeScript interfaces and Zod schemas
+    url-utils.ts     - URL normalization and SSRF protection
+    crawler.ts       - Deterministic site crawler with concurrency control
+    extractor.ts     - HTML content extraction (JSON-LD, FAQ, OpenAPI detection)
+    chunker.ts       - Content chunking logic
+    scorer.ts        - 5-category AI-focused scoring system
+    ai-discovery.ts  - Fetches llms.txt, robots.txt, sitemap analysis
+    index.ts         - Main audit runner
+  cli.ts             - Commander CLI tool
+  routes.ts          - Express API routes
+  analytics.ts       - Audit tracking and metrics
+  export.ts          - Markdown and PDF report generation
+client/
+  src/pages/
+    home.tsx         - Main audit interface with Lighthouse-style UI
+    analytics.tsx    - Analytics dashboard
 ```
 
 ## Tech Stack

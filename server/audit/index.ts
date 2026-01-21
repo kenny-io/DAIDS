@@ -4,6 +4,7 @@ import { crawlSite } from "./crawler";
 import { chunkAllPages } from "./chunker";
 import { scoreAll } from "./scorer";
 import { detectJSRendered } from "./extractor";
+import { fetchAIDiscoveryFiles } from "./ai-discovery";
 
 export async function runAudit(config: Partial<AuditConfig> & { url: string }): Promise<AuditResult> {
   const startTime = Date.now();
@@ -15,9 +16,12 @@ export async function runAudit(config: Partial<AuditConfig> & { url: string }): 
 
   const validPages = pages.filter((p) => !p.error);
 
-  const chunks = chunkAllPages(validPages);
+  const [chunks, aiFiles] = await Promise.all([
+    Promise.resolve(chunkAllPages(validPages)),
+    fetchAIDiscoveryFiles(validatedConfig, pages.length),
+  ]);
 
-  const { categories, overallScore, topFindings } = scoreAll(pages, chunks);
+  const { categories, overallScore, topFindings } = scoreAll(pages, chunks, aiFiles);
 
   const jsRenderedWarning = detectJSRendered(pages);
 

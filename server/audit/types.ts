@@ -21,6 +21,11 @@ export interface CodeBlock {
   content: string;
 }
 
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
+
 export interface ExtractedPage {
   url: string;
   title: string | null;
@@ -33,6 +38,49 @@ export interface ExtractedPage {
   rawHtml: string;
   statusCode: number;
   error?: string;
+  // AI-specific extraction
+  hasJsonLd: boolean;
+  jsonLdTypes: string[];
+  hasFAQSchema: boolean;
+  faqItems: FAQItem[];
+  hasOpenAPILink: boolean;
+  openAPIUrl: string | null;
+  hasPrerequisites: boolean;
+  internalLinkCount: number;
+  externalLinkCount: number;
+  codeLanguages: string[];
+  // Clean HTML signals
+  scriptCount: number;
+  htmlSize: number;
+  textToHtmlRatio: number;
+}
+
+export interface AIDiscoveryFiles {
+  llmsTxt: {
+    exists: boolean;
+    content: string | null;
+    hasProductDescription: boolean;
+    hasDocumentationLinks: boolean;
+    hasUseCases: boolean;
+  };
+  robotsTxt: {
+    exists: boolean;
+    content: string | null;
+    allowsAICrawlers: boolean;
+    blocksAICrawlers: boolean;
+    mentionsSitemap: boolean;
+    aiCrawlerRules: string[];
+  };
+  sitemap: {
+    exists: boolean;
+    urlCount: number;
+    hasLastmod: boolean;
+    coverageRatio: number;
+  };
+  aiLandingPage: {
+    exists: boolean;
+    url: string | null;
+  };
 }
 
 export interface ContentChunk {
