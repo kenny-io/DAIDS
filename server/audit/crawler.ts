@@ -143,58 +143,78 @@ export async function crawlSite(config: AuditConfig): Promise<CrawlResult> {
     toVisit.unshift({ url: rootNormalized, depth: 0 });
   }
 
-  const processUrl = async (item: { url: string; depth: number }): Promise<void> => {
-    if (pages.length >= config.maxPages) return;
-
+  const processUrl = async (item: { url: string; depth: number }): Promise<{ item: { url: string; depth: number }; result: ExtractedPage | null }> => {
     const ssrf = await isSSRFSafe(item.url);
     if (!ssrf.safe) {
       skippedCount++;
-      return;
+      return { item, result: null };
     }
 
     const result = await fetchWithTimeout(item.url, config.timeoutMs, config.userAgent);
 
     if ("error" in result) {
       errorCount++;
-      pages.push({
-        url: item.url,
-        title: null,
-        canonical: null,
-        metaDescription: null,
-        headings: [],
-        codeBlocks: [],
-        internalLinks: [],
-        mainContent: "",
-        rawHtml: "",
-        statusCode: 0,
-        error: result.error,
-      });
-      return;
+      return {
+        item,
+        result: {
+          url: item.url,
+          title: null,
+          canonical: null,
+          metaDescription: null,
+          headings: [],
+          codeBlocks: [],
+          internalLinks: [],
+          mainContent: "",
+          rawHtml: "",
+          statusCode: 0,
+          error: result.error,
+        },
+      };
     }
 
     const pageData = extractPageData(result.html, item.url, result.statusCode);
-    pages.push(pageData);
-
-    if (item.depth < config.maxDepth) {
-      for (const link of pageData.internalLinks) {
-        const normalized = normalizeUrl(link, item.url);
-        if (
-          normalized &&
-          isSameOrigin(normalized, rootUrl) &&
-          !visited.has(normalized) &&
-          toVisit.length + pages.length < config.maxPages * 2
-        ) {
-          visited.add(normalized);
-          toVisit.push({ url: normalized, depth: item.depth + 1 });
-        }
-      }
-    }
+    return { item, result: pageData };
   };
 
   while (toVisit.length > 0 && pages.length < config.maxPages) {
-    const batch = toVisit.splice(0, config.concurrency);
-    await Promise.all(batch.map((item) => limit(() => processUrl(item))));
+    // Sort toVisit by URL for deterministic ordering
+    toVisit.sort((a, b) => a.url.localeCompare(b.url));
+    
+    // Take only as many as we need to reach maxPages
+    const remaining = config.maxPages - pages.length;
+    const batch = toVisit.splice(0, Math.min(config.concurrency, remaining));
+    
+    const results = await Promise.all(batch.map((item) => limit(() => processUrl(item))));
+    
+    // Sort results by URL before processing to ensure deterministic link discovery order
+    results.sort((a, b) => a.item.url.localeCompare(b.item.url));
+    
+    // Process results in sorted order
+    for (const { item, result } of results) {
+      if (result && pages.length < config.maxPages) {
+        pages.push(result);
+        
+        // Discover new links only from successfully crawled pages
+        if (!result.error && item.depth < config.maxDepth) {
+          for (const link of result.internalLinks) {
+            const normalized = normalizeUrl(link, item.url);
+            if (
+              normalized &&
+              isSameOrigin(normalized, rootUrl) &&
+              !visited.has(normalized) &&
+              toVisit.length + pages.length < config.maxPages * 2
+            ) {
+              visited.add(normalized);
+              toVisit.push({ url: normalized, depth: item.depth + 1 });
+            }
+          }
+        }
+      }
+    }
   }
+
+  // Sort pages by URL for consistent scoring
+  pages.sort((a, b) => a.url.localeCompare(b.url));
 
   return {
     pages,
