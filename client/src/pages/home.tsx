@@ -247,11 +247,13 @@ function TopIssues({ findings }: { findings: Finding[] }) {
 }
 
 function ExportButton({ result }: { result: AuditResult }) {
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
-  const handleExportMarkdown = async () => {
+  const handleExport = async (format: "markdown" | "pdf") => {
+    setIsExporting(true);
     try {
-      const response = await fetch("/api/export/markdown", {
+      const response = await fetch(`/api/export/${format}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result),
@@ -263,23 +265,46 @@ function ExportButton({ result }: { result: AuditResult }) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `audit-report-${new Date().toISOString().split("T")[0]}.md`;
+      a.download = `audit-report-${new Date().toISOString().split("T")[0]}.${format === "pdf" ? "pdf" : "md"}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      toast({ title: "Report exported", description: "Markdown file downloaded successfully" });
+      toast({ 
+        title: "Report exported", 
+        description: `${format.toUpperCase()} file downloaded successfully` 
+      });
     } catch (error) {
       toast({ title: "Export failed", description: "Could not generate report", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
     }
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={handleExportMarkdown} data-testid="button-export">
-      <Download className="w-4 h-4 mr-2" />
-      Export Report
-    </Button>
+    <div className="flex gap-2">
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => handleExport("markdown")} 
+        disabled={isExporting}
+        data-testid="button-export-markdown"
+      >
+        <FileText className="w-4 h-4 mr-2" />
+        Markdown
+      </Button>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => handleExport("pdf")} 
+        disabled={isExporting}
+        data-testid="button-export-pdf"
+      >
+        <Download className="w-4 h-4 mr-2" />
+        PDF
+      </Button>
+    </div>
   );
 }
 

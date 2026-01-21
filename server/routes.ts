@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { runAudit, AuditConfigSchema } from "./audit";
 import { analyticsStore } from "./analytics";
-import { generateMarkdown } from "./export";
+import { generateMarkdown, generatePDF } from "./export";
 import { z } from "zod";
 
 const AuditRequestSchema = z.object({
@@ -71,6 +71,34 @@ export async function registerRoutes(
       res.status(500).json({
         error: true,
         message: error.message || "Failed to generate export",
+      });
+    }
+  });
+
+  app.post("/api/export/pdf", async (req: Request, res: Response) => {
+    try {
+      const result = req.body;
+
+      if (!result || !result.rootUrl || !result.categories) {
+        res.status(400).json({
+          error: true,
+          message: "Invalid audit result data",
+        });
+        return;
+      }
+
+      const pdfBuffer = await generatePDF(result);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="audit-report-${new Date().toISOString().split("T")[0]}.pdf"`
+      );
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      res.status(500).json({
+        error: true,
+        message: error.message || "Failed to generate PDF export",
       });
     }
   });

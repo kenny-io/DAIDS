@@ -118,11 +118,9 @@ export default function Analytics() {
               <p className="text-xs text-muted-foreground">Usage and performance metrics</p>
             </div>
           </div>
-          <Link href="/">
-            <a className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Auditor
-            </a>
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1" data-testid="link-back-auditor">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Auditor
           </Link>
         </div>
       </div>
