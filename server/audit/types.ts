@@ -77,10 +77,6 @@ export interface AIDiscoveryFiles {
     hasLastmod: boolean;
     coverageRatio: number;
   };
-  aiLandingPage: {
-    exists: boolean;
-    url: string | null;
-  };
 }
 
 export interface ContentChunk {

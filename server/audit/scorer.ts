@@ -168,23 +168,6 @@ function scoreAICrawlAccessibility(
     }
   }
 
-  if (!aiFiles.aiLandingPage.exists) {
-    score -= 2;
-    findings.push(
-      createFinding(
-        "low",
-        "No dedicated /ai or /llm landing page found. Consider creating a curated entry point for AI agents."
-      )
-    );
-  } else {
-    findings.push(
-      createFinding(
-        "pass",
-        `AI landing page found at ${aiFiles.aiLandingPage.url || "/ai"} providing a curated entry point.`
-      )
-    );
-  }
-
   return {
     name: "AI Crawl Accessibility",
     score: Math.max(0, score),
