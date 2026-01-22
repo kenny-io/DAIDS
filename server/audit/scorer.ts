@@ -188,21 +188,31 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
   const pagesWithJsonLd = validPages.filter((p) => p.hasJsonLd);
   const jsonLdRatio = pagesWithJsonLd.length / validPages.length;
 
+  const hasFAQContent = validPages.some((p) => p.faqItems.length > 0);
+  
   if (jsonLdRatio < 0.1) {
-    score -= 6;
-    findings.push(
-      createFinding(
-        "high",
-        `Only ${pagesWithJsonLd.length}/${validPages.length} pages have JSON-LD structured data. AI agents use this to understand page context.`,
-        validPages.filter((p) => !p.hasJsonLd).map((p) => p.url)
-      )
-    );
+    if (hasFAQContent) {
+      score -= 3;
+      findings.push(
+        createFinding(
+          "med",
+          `FAQ content detected but no FAQPage JSON-LD schema. Adding this schema significantly improves AI citation likelihood.`,
+          validPages.filter((p) => p.faqItems.length > 0).map((p) => p.url)
+        )
+      );
+    } else {
+      score -= 1;
+      findings.push(
+        createFinding(
+          "low",
+          `No JSON-LD structured data found. Optional for docs, but FAQPage/TechArticle schemas can improve AI visibility.`
+        )
+      );
+    }
   } else if (jsonLdRatio < 0.5) {
-    const deduction = Math.ceil((0.5 - jsonLdRatio) * 8);
-    score -= deduction;
     findings.push(
       createFinding(
-        "med",
+        "low",
         `${Math.round(jsonLdRatio * 100)}% of pages have JSON-LD. Consider expanding coverage.`,
         validPages.filter((p) => !p.hasJsonLd).map((p) => p.url)
       )
