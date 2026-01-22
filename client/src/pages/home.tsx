@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,9 +25,25 @@ import {
   ExternalLink,
   Zap,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Globe
 } from "lucide-react";
 import type { AuditResult, AuditRequest, Finding, CategoryResult } from "@shared/audit-types";
+import type { AuditAnalyticsEntry } from "@shared/analytics-types";
+
+interface ShowcaseResponse {
+  items: AuditAnalyticsEntry[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
 
 const categoryIcons: Record<string, typeof Search> = {
   "Agent discovery readiness": Target,
@@ -266,6 +282,138 @@ function TopIssues({ findings }: { findings: Finding[] }) {
   );
 }
 
+function ShowcaseCard({ entry }: { entry: AuditAnalyticsEntry }) {
+  const colors = getScoreColor(entry.score);
+  const date = new Date(entry.createdAt);
+  const timeAgo = getTimeAgo(date);
+
+  return (
+    <Card className="hover-elevate" data-testid={`showcase-card-${entry.id}`}>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          <ScoreGauge score={entry.score} size="small" />
+          <div className="flex-1 min-w-0">
+            <a
+              href={entry.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-sm hover:text-primary inline-flex items-center gap-1 truncate max-w-full"
+              data-testid={`link-showcase-${entry.id}`}
+            >
+              <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">{entry.domain}</span>
+              <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-50" />
+            </a>
+            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+              <span>{entry.crawledPages} pages</span>
+              <span>{timeAgo}</span>
+            </div>
+          </div>
+          <Badge 
+            variant="secondary" 
+            className={`${colors.text} ${colors.bg}/10`}
+          >
+            {getScoreLabel(entry.score)}
+          </Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function getTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
+function Showcase() {
+  const [page, setPage] = useState(1);
+
+  const { data, isLoading } = useQuery<ShowcaseResponse>({
+    queryKey: ["/api/showcase", page],
+    queryFn: async () => {
+      const res = await fetch(`/api/showcase?page=${page}&limit=10`);
+      if (!res.ok) throw new Error("Failed to fetch showcase");
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-muted" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-muted rounded w-48" />
+                  <div className="h-3 bg-muted rounded w-32" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (!data || data.items.length === 0) {
+    return (
+      <Card className="text-center py-8" data-testid="showcase-empty">
+        <CardContent>
+          <Globe className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No audits yet. Run your first audit above!</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="showcase-section">
+      <div className="space-y-3">
+        {data.items.map((entry) => (
+          <ShowcaseCard key={entry.id} entry={entry} />
+        ))}
+      </div>
+
+      {data.pagination.totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2" data-testid="showcase-pagination">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => p - 1)}
+            disabled={!data.pagination.hasPrev}
+            data-testid="button-prev-page"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground px-3">
+            Page {data.pagination.page} of {data.pagination.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => p + 1)}
+            disabled={!data.pagination.hasNext}
+            data-testid="button-next-page"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ExportButton({ result }: { result: AuditResult }) {
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
@@ -333,11 +481,15 @@ export default function Home() {
   const [maxPages, setMaxPages] = useState("50");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const auditMutation = useMutation({
     mutationFn: async (request: AuditRequest) => {
       const response = await apiRequest("POST", "/api/audit", request);
       return await response.json() as AuditResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/showcase"] });
     },
     onError: (error: Error) => {
       toast({
@@ -546,6 +698,16 @@ export default function Home() {
             </p>
           </div>
         )}
+
+        <Separator className="my-8" />
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Globe className="w-5 h-5 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Recent Audits</h2>
+          </div>
+          <Showcase />
+        </div>
       </div>
     </div>
   );

@@ -127,6 +127,35 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/showcase", (req: Request, res: Response) => {
+    try {
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+      const entries = analyticsStore.getAll();
+      const totalItems = entries.length;
+      const totalPages = Math.ceil(totalItems / limit);
+      const offset = (page - 1) * limit;
+      const items = entries.slice(offset, offset + limit);
+
+      res.json({
+        items,
+        pagination: {
+          page,
+          limit,
+          totalItems,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        error: true,
+        message: error.message || "Failed to fetch showcase",
+      });
+    }
+  });
+
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "docs-ai-audit" });
   });
