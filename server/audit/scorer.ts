@@ -273,86 +273,6 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
     );
   }
 
-  const pagesWithoutMeta = validPages.filter((p) => !p.metaDescription);
-  if (pagesWithoutMeta.length > validPages.length * 0.3) {
-    const ratio = pagesWithoutMeta.length / validPages.length;
-    const deduction = Math.min(3, Math.ceil(ratio * 6));
-    score -= deduction;
-    findings.push(
-      createFinding(
-        "med",
-        `${pagesWithoutMeta.length} pages lack meta descriptions. These help AI agents summarize content.`,
-        pagesWithoutMeta.map((p) => p.url)
-      )
-    );
-  } else {
-    findings.push(
-      createFinding(
-        "pass",
-        `${validPages.length - pagesWithoutMeta.length}/${validPages.length} pages have meta descriptions.`
-      )
-    );
-  }
-
-  const pagesWithoutTitle = validPages.filter((p) => !p.title);
-  if (pagesWithoutTitle.length > 0) {
-    const deduction = Math.min(2, pagesWithoutTitle.length);
-    score -= deduction;
-    findings.push(
-      createFinding(
-        pagesWithoutTitle.length > 5 ? "high" : "med",
-        `${pagesWithoutTitle.length} pages are missing title tags.`,
-        pagesWithoutTitle.map((p) => p.url)
-      )
-    );
-  } else {
-    findings.push(
-      createFinding(
-        "pass",
-        "All pages have title tags."
-      )
-    );
-  }
-
-  const avgScriptCount = validPages.reduce((sum, p) => sum + p.scriptCount, 0) / validPages.length;
-  const avgTextToHtmlRatio = validPages.reduce((sum, p) => sum + p.textToHtmlRatio, 0) / validPages.length;
-
-  if (avgScriptCount > 30) {
-    score -= 2;
-    findings.push(
-      createFinding(
-        "med",
-        `High JavaScript dependency: average ${Math.round(avgScriptCount)} scripts per page. AI crawlers prefer clean, static HTML.`,
-        validPages.filter((p) => p.scriptCount > 30).map((p) => p.url)
-      )
-    );
-  } else {
-    findings.push(
-      createFinding(
-        "pass",
-        `Clean HTML with average ${Math.round(avgScriptCount)} scripts per page.`
-      )
-    );
-  }
-
-  if (avgTextToHtmlRatio < 0.1) {
-    score -= 2;
-    findings.push(
-      createFinding(
-        "med",
-        `Low text-to-HTML ratio (${(avgTextToHtmlRatio * 100).toFixed(1)}%). Pages may be overly complex or JS-rendered.`,
-        validPages.filter((p) => p.textToHtmlRatio < 0.05).map((p) => p.url)
-      )
-    );
-  } else {
-    findings.push(
-      createFinding(
-        "pass",
-        `Good text-to-HTML ratio (${(avgTextToHtmlRatio * 100).toFixed(1)}%) indicating readable content.`
-      )
-    );
-  }
-
   return {
     name: "Structured Data & Machine Readability",
     score: Math.max(0, score),
@@ -415,26 +335,6 @@ function scoreContentSelfContainment(
         "pass",
         `${pagesWithFAQ.length} pages have FAQ/Q&A content structure for better query matching.`,
         pagesWithFAQ.map((p) => p.url)
-      )
-    );
-  }
-
-  const pagesWithPrereqs = validPages.filter((p) => p.hasPrerequisites);
-  const prereqRatio = pagesWithPrereqs.length / validPages.length;
-
-  if (prereqRatio < 0.1 && validPages.length > 10) {
-    score -= 3;
-    findings.push(
-      createFinding(
-        "med",
-        "Few pages list prerequisites or requirements. Self-contained pages should explicitly state dependencies."
-      )
-    );
-  } else if (prereqRatio >= 0.1) {
-    findings.push(
-      createFinding(
-        "pass",
-        `${pagesWithPrereqs.length} pages list prerequisites or requirements for self-contained content.`
       )
     );
   }
@@ -512,89 +412,6 @@ function scoreCodeAndAPIUsability(pages: ExtractedPage[]): CategoryResult {
         `${Math.round(codeRatio * 100)}% of pages have code examples for developers.`
       )
     );
-  }
-
-  const allCodeBlocks = validPages.flatMap((p) =>
-    p.codeBlocks.map((c) => ({ ...c, pageUrl: p.url }))
-  );
-  const untaggedBlocks = allCodeBlocks.filter((c) => !c.language);
-  const taggedBlocks = allCodeBlocks.filter((c) => c.language);
-
-  if (untaggedBlocks.length > 0) {
-    const untaggedRatio = untaggedBlocks.length / Math.max(1, allCodeBlocks.length);
-    const deduction = Math.min(5, Math.ceil(untaggedRatio * 10));
-    score -= deduction;
-    findings.push(
-      createFinding(
-        untaggedRatio > 0.5 ? "high" : "med",
-        `${untaggedBlocks.length}/${allCodeBlocks.length} code blocks lack language tags. AI agents need these for syntax understanding.`,
-        Array.from(new Set(untaggedBlocks.map((c) => c.pageUrl)))
-      )
-    );
-  } else if (allCodeBlocks.length > 0) {
-    findings.push(
-      createFinding(
-        "pass",
-        `All ${taggedBlocks.length} code blocks have language tags.`
-      )
-    );
-  }
-
-  const allLanguages = Array.from(new Set(
-    validPages.flatMap((p) => p.codeLanguages)
-  ));
-  const languageCount = allLanguages.length;
-
-  if (languageCount === 0 && pagesWithCode.length > 0) {
-    score -= 3;
-    findings.push(
-      createFinding(
-        "med",
-        "No programming languages detected in code blocks. Use language-tagged code fences."
-      )
-    );
-  } else if (languageCount === 1) {
-    findings.push(
-      createFinding(
-        "low",
-        `Code examples only in one language (${allLanguages[0]}). Consider adding examples in multiple languages.`
-      )
-    );
-  } else if (languageCount >= 3) {
-    findings.push(
-      createFinding(
-        "pass",
-        `Good language diversity: ${languageCount} languages detected (${allLanguages.slice(0, 5).join(", ")}).`
-      )
-    );
-  } else if (languageCount === 2) {
-    findings.push(
-      createFinding(
-        "pass",
-        `Code examples in ${languageCount} languages (${allLanguages.join(", ")}).`
-      )
-    );
-  }
-
-  if (pagesWithCode.length > 0) {
-    const avgCodeBlocks =
-      pagesWithCode.reduce((sum, p) => sum + p.codeBlocks.length, 0) / pagesWithCode.length;
-    if (avgCodeBlocks < 1.5) {
-      score -= 2;
-      findings.push(
-        createFinding(
-          "low",
-          `Low code density: ${avgCodeBlocks.toFixed(1)} code blocks per page. More examples improve usability.`
-        )
-      );
-    } else {
-      findings.push(
-        createFinding(
-          "pass",
-          `Good code density: ${avgCodeBlocks.toFixed(1)} code blocks per page on average.`
-        )
-      );
-    }
   }
 
   return {
@@ -719,28 +536,6 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
       createFinding(
         "pass",
         `${pagesWithDates.length}/${validPages.length} pages display freshness signals (dates, timestamps).`
-      )
-    );
-  }
-
-  const changelogPatterns = [/changelog/i, /release.?notes/i, /what's.?new/i];
-  const hasChangelog = validPages.some((p) =>
-    changelogPatterns.some((pat) => pat.test(p.url) || (p.title && pat.test(p.title)))
-  );
-
-  if (!hasChangelog) {
-    score -= 2;
-    findings.push(
-      createFinding(
-        "low",
-        "No changelog or release notes page detected. Versioning information builds trust with AI agents."
-      )
-    );
-  } else {
-    findings.push(
-      createFinding(
-        "pass",
-        "Changelog or release notes page detected for version tracking."
       )
     );
   }
