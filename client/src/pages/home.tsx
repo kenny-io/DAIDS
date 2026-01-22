@@ -101,7 +101,9 @@ function CategoryScoreBar({ category }: { category: CategoryResult }) {
   const Icon = categoryIcons[category.name] || Target;
   const percentage = Math.round((category.score / category.max) * 100);
   const colors = getScoreColor(percentage);
-  const hasIssues = category.findings.length > 0;
+  const issueFindings = category.findings.filter(f => f.severity !== "pass");
+  const passFindings = category.findings.filter(f => f.severity === "pass");
+  const hasIssues = issueFindings.length > 0;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -120,7 +122,12 @@ function CategoryScoreBar({ category }: { category: CategoryResult }) {
               <div className="flex items-center gap-2">
                 {hasIssues && (
                   <Badge variant="secondary" className="text-xs">
-                    {category.findings.length} {category.findings.length === 1 ? "issue" : "issues"}
+                    {issueFindings.length} {issueFindings.length === 1 ? "issue" : "issues"}
+                  </Badge>
+                )}
+                {passFindings.length > 0 && (
+                  <Badge variant="secondary" className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                    {passFindings.length} passed
                   </Badge>
                 )}
                 <span className={`font-semibold text-sm ${colors.text}`}>
@@ -142,15 +149,25 @@ function CategoryScoreBar({ category }: { category: CategoryResult }) {
 
       <CollapsibleContent>
         <div className="pl-14 pr-4 pb-4 space-y-2">
-          {category.findings.length === 0 ? (
+          {passFindings.length > 0 && (
+            <div className="space-y-2">
+              {passFindings.map((finding, idx) => (
+                <FindingRow key={`pass-${idx}`} finding={finding} />
+              ))}
+            </div>
+          )}
+          {issueFindings.length > 0 && (
+            <div className="space-y-2">
+              {issueFindings.map((finding, idx) => (
+                <FindingRow key={`issue-${idx}`} finding={finding} />
+              ))}
+            </div>
+          )}
+          {category.findings.length === 0 && (
             <div className="flex items-center gap-2 py-2 text-emerald-600">
               <CheckCircle2 className="w-4 h-4" />
               <span className="text-sm">All checks passed</span>
             </div>
-          ) : (
-            category.findings.map((finding, idx) => (
-              <FindingRow key={idx} finding={finding} />
-            ))
           )}
         </div>
       </CollapsibleContent>
@@ -161,16 +178,19 @@ function CategoryScoreBar({ category }: { category: CategoryResult }) {
 function FindingRow({ finding }: { finding: Finding }) {
   const [showUrls, setShowUrls] = useState(false);
   const severityConfig = {
-    high: { color: "text-red-600", bg: "bg-red-100 dark:bg-red-900/30", label: "High" },
-    med: { color: "text-amber-600", bg: "bg-amber-100 dark:bg-amber-900/30", label: "Medium" },
-    low: { color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-900/30", label: "Low" },
+    pass: { color: "text-emerald-600", bg: "bg-emerald-100 dark:bg-emerald-900/30", label: "Passed", icon: CheckCircle2 },
+    high: { color: "text-red-600", bg: "bg-red-100 dark:bg-red-900/30", label: "High", icon: AlertCircle },
+    med: { color: "text-amber-600", bg: "bg-amber-100 dark:bg-amber-900/30", label: "Medium", icon: AlertTriangle },
+    low: { color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-900/30", label: "Low", icon: AlertCircle },
   };
   const config = severityConfig[finding.severity] || severityConfig.low;
+  const Icon = config.icon;
 
   return (
-    <div className="rounded-lg border p-3 bg-muted/30" data-testid={`finding-${finding.severity}`}>
+    <div className={`rounded-lg border p-3 ${finding.severity === "pass" ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900" : "bg-muted/30"}`} data-testid={`finding-${finding.severity}`}>
       <div className="flex items-start gap-3">
-        <span className={`px-2 py-0.5 rounded text-xs font-medium ${config.bg} ${config.color}`}>
+        <span className={`px-2 py-0.5 rounded text-xs font-medium inline-flex items-center gap-1 ${config.bg} ${config.color}`}>
+          <Icon className="w-3 h-3" />
           {config.label}
         </span>
         <div className="flex-1 min-w-0">

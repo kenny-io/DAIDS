@@ -1,4 +1,4 @@
-export type FindingSeverity = "low" | "med" | "high";
+export type FindingSeverity = "pass" | "low" | "med" | "high";
 
 export interface Finding {
   severity: FindingSeverity;

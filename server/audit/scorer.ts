@@ -38,8 +38,10 @@ function scoreAICrawlAccessibility(
       )
     );
   } else {
+    let llmsTxtIssues = 0;
     if (!aiFiles.llmsTxt.hasProductDescription) {
       score -= 2;
+      llmsTxtIssues++;
       findings.push(
         createFinding(
           "med",
@@ -49,6 +51,7 @@ function scoreAICrawlAccessibility(
     }
     if (!aiFiles.llmsTxt.hasDocumentationLinks) {
       score -= 2;
+      llmsTxtIssues++;
       findings.push(
         createFinding(
           "med",
@@ -58,10 +61,19 @@ function scoreAICrawlAccessibility(
     }
     if (!aiFiles.llmsTxt.hasUseCases) {
       score -= 1;
+      llmsTxtIssues++;
       findings.push(
         createFinding(
           "low",
           "llms.txt should describe common use cases for better AI recommendations."
+        )
+      );
+    }
+    if (llmsTxtIssues === 0) {
+      findings.push(
+        createFinding(
+          "pass",
+          "llms.txt file found with product description, documentation links, and use cases."
         )
       );
     }
@@ -76,8 +88,10 @@ function scoreAICrawlAccessibility(
       )
     );
   } else {
+    let robotsTxtIssues = 0;
     if (aiFiles.robotsTxt.blocksAICrawlers) {
       score -= 4;
+      robotsTxtIssues++;
       findings.push(
         createFinding(
           "high",
@@ -86,6 +100,7 @@ function scoreAICrawlAccessibility(
       );
     } else if (!aiFiles.robotsTxt.allowsAICrawlers && aiFiles.robotsTxt.aiCrawlerRules.length === 0) {
       score -= 1;
+      robotsTxtIssues++;
       findings.push(
         createFinding(
           "low",
@@ -95,10 +110,19 @@ function scoreAICrawlAccessibility(
     }
     if (!aiFiles.robotsTxt.mentionsSitemap) {
       score -= 1;
+      robotsTxtIssues++;
       findings.push(
         createFinding(
           "low",
           "robots.txt should reference your sitemap.xml for better crawl discovery."
+        )
+      );
+    }
+    if (robotsTxtIssues === 0) {
+      findings.push(
+        createFinding(
+          "pass",
+          "robots.txt properly configured with AI crawler access rules and sitemap reference."
         )
       );
     }
@@ -113,8 +137,10 @@ function scoreAICrawlAccessibility(
       )
     );
   } else {
+    let sitemapIssues = 0;
     if (!aiFiles.sitemap.hasLastmod) {
       score -= 1;
+      sitemapIssues++;
       findings.push(
         createFinding(
           "low",
@@ -124,10 +150,19 @@ function scoreAICrawlAccessibility(
     }
     if (aiFiles.sitemap.coverageRatio < 0.5 && pages.length > 10) {
       score -= 1;
+      sitemapIssues++;
       findings.push(
         createFinding(
           "med",
           `Sitemap only covers ${Math.round(aiFiles.sitemap.coverageRatio * 100)}% of crawled pages. Many pages may be undiscoverable.`
+        )
+      );
+    }
+    if (sitemapIssues === 0) {
+      findings.push(
+        createFinding(
+          "pass",
+          `sitemap.xml found with ${aiFiles.sitemap.urlCount} URLs and lastmod dates for freshness signals.`
         )
       );
     }
@@ -139,6 +174,13 @@ function scoreAICrawlAccessibility(
       createFinding(
         "low",
         "No dedicated /ai or /llm landing page found. Consider creating a curated entry point for AI agents."
+      )
+    );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `AI landing page found at ${aiFiles.aiLandingPage.url || "/ai"} providing a curated entry point.`
       )
     );
   }
@@ -182,6 +224,13 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
         validPages.filter((p) => !p.hasJsonLd).map((p) => p.url)
       )
     );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `${Math.round(jsonLdRatio * 100)}% of pages have JSON-LD structured data for AI context.`
+      )
+    );
   }
 
   const allJsonLdTypes = validPages.flatMap((p) => p.jsonLdTypes);
@@ -195,6 +244,13 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
       createFinding(
         "low",
         "JSON-LD exists but lacks documentation-specific types (TechArticle, HowTo, APIReference). Use richer schema types."
+      )
+    );
+  } else if (hasRichTypes) {
+    findings.push(
+      createFinding(
+        "pass",
+        "Rich schema types detected (TechArticle, HowTo, or similar) for enhanced AI understanding."
       )
     );
   }
@@ -217,7 +273,7 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
   } else {
     findings.push(
       createFinding(
-        "low",
+        "pass",
         `OpenAPI/Swagger spec found at: ${pagesWithOpenAPI[0].openAPIUrl || "linked pages"}`,
         pagesWithOpenAPI.map((p) => p.url)
       )
@@ -236,6 +292,13 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
         pagesWithoutMeta.map((p) => p.url)
       )
     );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `${validPages.length - pagesWithoutMeta.length}/${validPages.length} pages have meta descriptions.`
+      )
+    );
   }
 
   const pagesWithoutTitle = validPages.filter((p) => !p.title);
@@ -247,6 +310,13 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
         pagesWithoutTitle.length > 5 ? "high" : "med",
         `${pagesWithoutTitle.length} pages are missing title tags.`,
         pagesWithoutTitle.map((p) => p.url)
+      )
+    );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        "All pages have title tags."
       )
     );
   }
@@ -263,6 +333,13 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
         validPages.filter((p) => p.scriptCount > 30).map((p) => p.url)
       )
     );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `Clean HTML with average ${Math.round(avgScriptCount)} scripts per page.`
+      )
+    );
   }
 
   if (avgTextToHtmlRatio < 0.1) {
@@ -272,6 +349,13 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
         "med",
         `Low text-to-HTML ratio (${(avgTextToHtmlRatio * 100).toFixed(1)}%). Pages may be overly complex or JS-rendered.`,
         validPages.filter((p) => p.textToHtmlRatio < 0.05).map((p) => p.url)
+      )
+    );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `Good text-to-HTML ratio (${(avgTextToHtmlRatio * 100).toFixed(1)}%) indicating readable content.`
       )
     );
   }
@@ -310,6 +394,13 @@ function scoreContentSelfContainment(
         thinPages.map((p) => p.url)
       )
     );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `${validPages.length - thinPages.length}/${validPages.length} pages have substantial content (>300 chars).`
+      )
+    );
   }
 
   const pagesWithFAQ = validPages.filter(
@@ -325,11 +416,11 @@ function scoreContentSelfContainment(
         "Few pages use FAQ format. AI agents perform better with Q&A-structured content that matches natural queries."
       )
     );
-  } else if (faqRatio > 0.1) {
+  } else {
     findings.push(
       createFinding(
-        "low",
-        `${pagesWithFAQ.length} pages have FAQ/Q&A content structure. This helps AI agents match user queries.`,
+        "pass",
+        `${pagesWithFAQ.length} pages have FAQ/Q&A content structure for better query matching.`,
         pagesWithFAQ.map((p) => p.url)
       )
     );
@@ -346,9 +437,19 @@ function scoreContentSelfContainment(
         "Few pages list prerequisites or requirements. Self-contained pages should explicitly state dependencies."
       )
     );
+  } else if (prereqRatio >= 0.1) {
+    findings.push(
+      createFinding(
+        "pass",
+        `${pagesWithPrereqs.length} pages list prerequisites or requirements for self-contained content.`
+      )
+    );
   }
 
   const shortChunks = chunks.filter((c) => c.tokenEstimate < 50);
+  const longChunks = chunks.filter((c) => c.tokenEstimate > 800);
+  const goodChunks = chunks.filter((c) => c.tokenEstimate >= 50 && c.tokenEstimate <= 800);
+
   if (shortChunks.length > chunks.length * 0.3) {
     const deduction = Math.min(3, Math.ceil((shortChunks.length / chunks.length) * 6));
     score -= deduction;
@@ -361,7 +462,6 @@ function scoreContentSelfContainment(
     );
   }
 
-  const longChunks = chunks.filter((c) => c.tokenEstimate > 800);
   if (longChunks.length > chunks.length * 0.2) {
     score -= 2;
     findings.push(
@@ -369,6 +469,15 @@ function scoreContentSelfContainment(
         "low",
         `${longChunks.length} chunks exceed 800 tokens. Consider better heading structure for improved chunking.`,
         Array.from(new Set(longChunks.map((c) => c.pageUrl)))
+      )
+    );
+  }
+
+  if (shortChunks.length <= chunks.length * 0.3 && longChunks.length <= chunks.length * 0.2 && chunks.length > 0) {
+    findings.push(
+      createFinding(
+        "pass",
+        `${goodChunks.length}/${chunks.length} chunks are well-sized (50-800 tokens) for AI retrieval.`
       )
     );
   }
@@ -403,12 +512,20 @@ function scoreCodeAndAPIUsability(pages: ExtractedPage[]): CategoryResult {
         validPages.filter((p) => p.codeBlocks.length === 0).map((p) => p.url)
       )
     );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `${Math.round(codeRatio * 100)}% of pages have code examples for developers.`
+      )
+    );
   }
 
   const allCodeBlocks = validPages.flatMap((p) =>
     p.codeBlocks.map((c) => ({ ...c, pageUrl: p.url }))
   );
   const untaggedBlocks = allCodeBlocks.filter((c) => !c.language);
+  const taggedBlocks = allCodeBlocks.filter((c) => c.language);
 
   if (untaggedBlocks.length > 0) {
     const untaggedRatio = untaggedBlocks.length / Math.max(1, allCodeBlocks.length);
@@ -419,6 +536,13 @@ function scoreCodeAndAPIUsability(pages: ExtractedPage[]): CategoryResult {
         untaggedRatio > 0.5 ? "high" : "med",
         `${untaggedBlocks.length}/${allCodeBlocks.length} code blocks lack language tags. AI agents need these for syntax understanding.`,
         Array.from(new Set(untaggedBlocks.map((c) => c.pageUrl)))
+      )
+    );
+  } else if (allCodeBlocks.length > 0) {
+    findings.push(
+      createFinding(
+        "pass",
+        `All ${taggedBlocks.length} code blocks have language tags.`
       )
     );
   }
@@ -446,8 +570,15 @@ function scoreCodeAndAPIUsability(pages: ExtractedPage[]): CategoryResult {
   } else if (languageCount >= 3) {
     findings.push(
       createFinding(
-        "low",
+        "pass",
         `Good language diversity: ${languageCount} languages detected (${allLanguages.slice(0, 5).join(", ")}).`
+      )
+    );
+  } else if (languageCount === 2) {
+    findings.push(
+      createFinding(
+        "pass",
+        `Code examples in ${languageCount} languages (${allLanguages.join(", ")}).`
       )
     );
   }
@@ -461,6 +592,13 @@ function scoreCodeAndAPIUsability(pages: ExtractedPage[]): CategoryResult {
         createFinding(
           "low",
           `Low code density: ${avgCodeBlocks.toFixed(1)} code blocks per page. More examples improve usability.`
+        )
+      );
+    } else {
+      findings.push(
+        createFinding(
+          "pass",
+          `Good code density: ${avgCodeBlocks.toFixed(1)} code blocks per page on average.`
         )
       );
     }
@@ -503,6 +641,13 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
         `Moderate internal linking: ${avgInternalLinks.toFixed(1)} links per page. Consider adding more cross-references.`
       )
     );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `Good internal linking: average ${avgInternalLinks.toFixed(1)} links per page for AI navigation.`
+      )
+    );
   }
 
   const pagesWithBadH1 = validPages.filter((p) => {
@@ -518,6 +663,13 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
         "med",
         `${pagesWithBadH1.length} pages have missing or multiple H1 headings. Each page should have exactly one H1.`,
         pagesWithBadH1.map((p) => p.url)
+      )
+    );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `${validPages.length - pagesWithBadH1.length}/${validPages.length} pages have proper H1 heading structure.`
       )
     );
   }
@@ -537,6 +689,13 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
         "low",
         `${pagesWithSkippedLevels.length} pages skip heading levels (e.g., H2 to H4). Proper hierarchy aids content chunking.`,
         pagesWithSkippedLevels.map((p) => p.url)
+      )
+    );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `${validPages.length - pagesWithSkippedLevels.length}/${validPages.length} pages have proper heading hierarchy.`
       )
     );
   }
@@ -562,6 +721,13 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
         validPages.filter((p) => !freshnessPatterns.some((pat) => pat.test(p.rawHtml))).map((p) => p.url)
       )
     );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `${pagesWithDates.length}/${validPages.length} pages display freshness signals (dates, timestamps).`
+      )
+    );
   }
 
   const changelogPatterns = [/changelog/i, /release.?notes/i, /what's.?new/i];
@@ -577,6 +743,13 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
         "No changelog or release notes page detected. Versioning information builds trust with AI agents."
       )
     );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        "Changelog or release notes page detected for version tracking."
+      )
+    );
   }
 
   const errorPages = pages.filter((p) => p.error || (p.statusCode >= 400 && p.statusCode < 600));
@@ -587,6 +760,13 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
         "med",
         `${errorPages.length} pages returned errors. Broken links hurt crawl efficiency.`,
         errorPages.map((p) => p.url)
+      )
+    );
+  } else {
+    findings.push(
+      createFinding(
+        "pass",
+        `Low error rate: ${errorPages.length}/${pages.length} pages with errors.`
       )
     );
   }
@@ -623,8 +803,9 @@ export function scoreAll(
     }))
   );
 
-  const severityOrder: Record<FindingSeverity, number> = { high: 0, med: 1, low: 2 };
-  const sortedFindings = allFindings.sort(
+  const severityOrder: Record<FindingSeverity, number> = { high: 0, med: 1, low: 2, pass: 3 };
+  const issueFindings = allFindings.filter(f => f.severity !== "pass");
+  const sortedFindings = issueFindings.sort(
     (a, b) => severityOrder[a.severity] - severityOrder[b.severity]
   );
 
