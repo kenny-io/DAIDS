@@ -184,6 +184,28 @@ async function checkAILandingPage(
     `${baseUrl}/for-ai`,
   ];
 
+  const soft404Patterns = [
+    /<title>[^<]*not\s*found[^<]*<\/title>/i,
+    /<title>[^<]*404[^<]*<\/title>/i,
+    /<title>[^<]*error[^<]*<\/title>/i,
+    /<h1>[^<]*not\s*found[^<]*<\/h1>/i,
+    /<h1>[^<]*404[^<]*<\/h1>/i,
+    /page\s*(not\s*found|doesn't\s*exist)/i,
+    /class="[^"]*error-page[^"]*"/i,
+    /class="[^"]*not-found[^"]*"/i,
+  ];
+
+  const aiContentPatterns = [
+    /\bllm\b/i,
+    /\blarge\s*language\s*model/i,
+    /\bai\s*(agent|assistant|integration)/i,
+    /\bfor\s*ai\b/i,
+    /\bmachine\s*learning\b/i,
+    /\bchatgpt\b/i,
+    /\bclaude\b/i,
+    /\bgpt\b/i,
+  ];
+
   for (const url of aiPageUrls) {
     try {
       const ssrfCheck = await isSSRFSafe(url);
@@ -195,12 +217,19 @@ async function checkAILandingPage(
       const response = await fetch(url, {
         signal: controller.signal,
         headers: { "User-Agent": userAgent },
-        method: "HEAD",
       });
 
       clearTimeout(timeoutId);
 
-      if (response.ok) {
+      if (!response.ok) continue;
+
+      const content = await response.text();
+
+      const isSoft404 = soft404Patterns.some((pattern) => pattern.test(content));
+      if (isSoft404) continue;
+
+      const hasAIContent = aiContentPatterns.some((pattern) => pattern.test(content));
+      if (hasAIContent) {
         return { exists: true, url };
       }
     } catch {
