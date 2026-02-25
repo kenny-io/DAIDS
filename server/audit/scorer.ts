@@ -283,7 +283,8 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
 
 function scoreContentSelfContainment(
   pages: ExtractedPage[],
-  chunks: ContentChunk[]
+  chunks: ContentChunk[],
+  jsRendered: boolean
 ): CategoryResult {
   const findings: Finding[] = [];
   let score = MAX_CATEGORY_SCORE;
@@ -293,27 +294,36 @@ function scoreContentSelfContainment(
     return { name: "Content Self-Containment", score: 0, max: MAX_CATEGORY_SCORE, findings: [] };
   }
 
-  const thinPages = validPages.filter(
-    (p) => p.mainContent.length > 0 && p.mainContent.length < 300
-  );
-  if (thinPages.length > validPages.length * 0.2) {
-    const ratio = thinPages.length / validPages.length;
-    const deduction = Math.min(5, Math.ceil(ratio * 10));
-    score -= deduction;
+  if (jsRendered) {
     findings.push(
       createFinding(
-        "high",
-        `${thinPages.length} pages have thin content (<300 chars). AI agents need substantial, self-contained information.`,
-        thinPages.map((p) => p.url)
+        "low",
+        "JS-rendered site detected — content length checks skipped as static HTML parsing cannot accurately measure page content."
       )
     );
   } else {
-    findings.push(
-      createFinding(
-        "pass",
-        `${validPages.length - thinPages.length}/${validPages.length} pages have substantial content (>300 chars).`
-      )
+    const thinPages = validPages.filter(
+      (p) => p.mainContent.length > 0 && p.mainContent.length < 300
     );
+    if (thinPages.length > validPages.length * 0.2) {
+      const ratio = thinPages.length / validPages.length;
+      const deduction = Math.min(5, Math.ceil(ratio * 10));
+      score -= deduction;
+      findings.push(
+        createFinding(
+          "high",
+          `${thinPages.length} pages have thin content (<300 chars). AI agents need substantial, self-contained information.`,
+          thinPages.map((p) => p.url)
+        )
+      );
+    } else {
+      findings.push(
+        createFinding(
+          "pass",
+          `${validPages.length - thinPages.length}/${validPages.length} pages have substantial content (>300 chars).`
+        )
+      );
+    }
   }
 
   const pagesWithFAQ = validPages.filter(
@@ -533,12 +543,13 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
 export function scoreAll(
   pages: ExtractedPage[],
   chunks: ContentChunk[],
-  aiFiles: AIDiscoveryFiles
+  aiFiles: AIDiscoveryFiles,
+  jsRendered: boolean = false
 ): { categories: CategoryResult[]; overallScore: number; topFindings: Finding[] } {
   const categories: CategoryResult[] = [
     scoreAICrawlAccessibility(aiFiles, pages),
     scoreStructuredDataAndMachineReadability(pages),
-    scoreContentSelfContainment(pages, chunks),
+    scoreContentSelfContainment(pages, chunks, jsRendered),
     scoreDocumentationArchitecture(pages),
   ];
 

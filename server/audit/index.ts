@@ -21,9 +21,9 @@ export async function runAudit(config: Partial<AuditConfig> & { url: string }): 
     fetchAIDiscoveryFiles(validatedConfig, pages.length),
   ]);
 
-  const { categories, overallScore, topFindings } = scoreAll(pages, chunks, aiFiles);
-
   const jsRenderedWarning = detectJSRendered(pages);
+
+  const { categories, overallScore, topFindings } = scoreAll(pages, chunks, aiFiles, jsRenderedWarning);
 
   const durationMs = Date.now() - startTime;
 
