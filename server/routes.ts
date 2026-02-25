@@ -156,6 +156,21 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/audit/:id", (req: Request, res: Response) => {
+    try {
+      const result = analyticsStore.getResultById(req.params.id);
+      if (!result) {
+        return res.status(404).json({ error: true, message: "Audit result not found" });
+      }
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        error: true,
+        message: error.message || "Failed to fetch audit result",
+      });
+    }
+  });
+
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "docs-ai-audit" });
   });

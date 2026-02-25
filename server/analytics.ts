@@ -4,6 +4,7 @@ import type { AuditAnalyticsEntry, AnalyticsSummary } from "@shared/analytics-ty
 
 class AnalyticsStore {
   private entries: AuditAnalyticsEntry[] = [];
+  private results: Map<string, AuditResult> = new Map();
 
   recordAudit(result: AuditResult): AuditAnalyticsEntry {
     const url = new URL(result.rootUrl);
@@ -27,9 +28,13 @@ class AnalyticsStore {
     };
 
     this.entries.unshift(entry);
+    this.results.set(entry.id, result);
 
     if (this.entries.length > 1000) {
-      this.entries = this.entries.slice(0, 1000);
+      const removed = this.entries.splice(1000);
+      for (const r of removed) {
+        this.results.delete(r.id);
+      }
     }
 
     return entry;
@@ -96,6 +101,10 @@ class AnalyticsStore {
 
   getAll(): AuditAnalyticsEntry[] {
     return this.entries;
+  }
+
+  getResultById(id: string): AuditResult | undefined {
+    return this.results.get(id);
   }
 }
 

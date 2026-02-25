@@ -282,28 +282,25 @@ function TopIssues({ findings }: { findings: Finding[] }) {
   );
 }
 
-function ShowcaseCard({ entry }: { entry: AuditAnalyticsEntry }) {
+function ShowcaseCard({ entry, onClick }: { entry: AuditAnalyticsEntry; onClick: (id: string) => void }) {
   const colors = getScoreColor(entry.score);
   const date = new Date(entry.createdAt);
   const timeAgo = getTimeAgo(date);
 
   return (
-    <Card className="hover-elevate" data-testid={`showcase-card-${entry.id}`}>
+    <Card 
+      className="hover-elevate cursor-pointer transition-colors hover:border-primary/30" 
+      data-testid={`showcase-card-${entry.id}`}
+      onClick={() => onClick(entry.id)}
+    >
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           <ScoreGauge score={entry.score} size="small" />
           <div className="flex-1 min-w-0">
-            <a
-              href={entry.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-sm hover:text-primary inline-flex items-center gap-1 truncate max-w-full"
-              data-testid={`link-showcase-${entry.id}`}
-            >
+            <div className="font-medium text-sm inline-flex items-center gap-1 truncate max-w-full">
               <Globe className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="truncate">{entry.domain}</span>
-              <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-50" />
-            </a>
+            </div>
             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
               <span>{entry.crawledPages} pages</span>
               <span>{timeAgo}</span>
@@ -333,7 +330,7 @@ function getTimeAgo(date: Date): string {
   return date.toLocaleDateString();
 }
 
-function Showcase() {
+function Showcase({ onSelect }: { onSelect: (id: string) => void }) {
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery<ShowcaseResponse>({
@@ -381,7 +378,7 @@ function Showcase() {
     <div className="space-y-4" data-testid="showcase-section">
       <div className="space-y-3">
         {data.items.map((entry) => (
-          <ShowcaseCard key={entry.id} entry={entry} />
+          <ShowcaseCard key={entry.id} entry={entry} onClick={onSelect} />
         ))}
       </div>
 
@@ -480,6 +477,7 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [maxPages, setMaxPages] = useState("50");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedAuditId, setSelectedAuditId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -489,6 +487,7 @@ export default function Home() {
       return await response.json() as AuditResult;
     },
     onSuccess: () => {
+      setSelectedAuditId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/showcase"] });
     },
     onError: (error: Error) => {
@@ -498,6 +497,16 @@ export default function Home() {
         variant: "destructive",
       });
     },
+  });
+
+  const showcaseQuery = useQuery<AuditResult>({
+    queryKey: ["/api/audit", selectedAuditId],
+    queryFn: async () => {
+      const res = await fetch(`/api/audit/${selectedAuditId}`);
+      if (!res.ok) throw new Error("Audit result not found");
+      return res.json();
+    },
+    enabled: !!selectedAuditId,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -511,11 +520,20 @@ export default function Home() {
       return;
     }
 
+    setSelectedAuditId(null);
     auditMutation.mutate({
       url: url.trim(),
       maxPages: parseInt(maxPages, 10) || 50,
     });
   };
+
+  const handleShowcaseSelect = (id: string) => {
+    setSelectedAuditId(id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const displayResult = auditMutation.data ?? showcaseQuery.data ?? null;
+  const isLoadingResult = showcaseQuery.isLoading && !!selectedAuditId;
 
   return (
     <div className="min-h-screen bg-background">
@@ -606,42 +624,59 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {auditMutation.isPending && (
+        {(auditMutation.isPending || isLoadingResult) && (
           <Card className="mb-8">
             <CardContent className="py-12 text-center">
               <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-              <p className="text-muted-foreground">Crawling and analyzing documentation...</p>
-              <p className="text-xs text-muted-foreground mt-1">This may take up to a minute</p>
+              <p className="text-muted-foreground">
+                {auditMutation.isPending ? "Crawling and analyzing documentation..." : "Loading audit results..."}
+              </p>
+              {auditMutation.isPending && (
+                <p className="text-xs text-muted-foreground mt-1">This may take up to a minute</p>
+              )}
             </CardContent>
           </Card>
         )}
 
-        {auditMutation.data && (
+        {displayResult && !auditMutation.isPending && (
           <div className="space-y-6 animate-in fade-in duration-300" data-testid="audit-results">
+            {selectedAuditId && !auditMutation.data && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedAuditId(null)}
+                className="mb-2"
+                data-testid="button-back-to-empty"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Back
+              </Button>
+            )}
+
             <Card>
               <CardContent className="py-8">
                 <div className="flex flex-col md:flex-row items-center gap-8">
-                  <ScoreGauge score={auditMutation.data.score} />
+                  <ScoreGauge score={displayResult.score} />
                   
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h2 className="text-xl font-semibold mb-1">Audit Complete</h2>
                         <a
-                          href={auditMutation.data.rootUrl}
+                          href={displayResult.rootUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-primary hover:underline inline-flex items-center gap-1"
                           data-testid="link-audited-url"
                         >
-                          {auditMutation.data.rootUrl}
+                          {displayResult.rootUrl}
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
-                      <ExportButton result={auditMutation.data} />
+                      <ExportButton result={displayResult} />
                     </div>
 
-                    {auditMutation.data.meta.jsRenderedWarning && (
+                    {displayResult.meta.jsRenderedWarning && (
                       <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-amber-500/10 text-amber-600">
                         <AlertCircle className="w-4 h-4" />
                         <span className="text-sm">JS-rendered docs detected. Some content may not be fully indexed.</span>
@@ -649,10 +684,10 @@ export default function Home() {
                     )}
 
                     <div className="grid grid-cols-4 divide-x">
-                      <MetricCard icon={FileText} label="Pages" value={auditMutation.data.crawledPages} />
-                      <MetricCard icon={Layers} label="Chunks" value={auditMutation.data.meta.chunkCount} />
-                      <MetricCard icon={Clock} label="Duration" value={`${(auditMutation.data.meta.durationMs / 1000).toFixed(1)}s`} />
-                      <MetricCard icon={AlertTriangle} label="Errors" value={auditMutation.data.meta.errorCount} />
+                      <MetricCard icon={FileText} label="Pages" value={displayResult.crawledPages} />
+                      <MetricCard icon={Layers} label="Chunks" value={displayResult.meta.chunkCount} />
+                      <MetricCard icon={Clock} label="Duration" value={`${(displayResult.meta.durationMs / 1000).toFixed(1)}s`} />
+                      <MetricCard icon={AlertTriangle} label="Errors" value={displayResult.meta.errorCount} />
                     </div>
                   </div>
                 </div>
@@ -662,16 +697,16 @@ export default function Home() {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-3">
                 <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Category Breakdown</h3>
-                {auditMutation.data.categories.map((category, index) => (
+                {displayResult.categories.map((category, index) => (
                   <CategoryScoreBar key={index} category={category} />
                 ))}
               </div>
 
               <div>
                 <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Priority Fixes</h3>
-                {auditMutation.data.topFindings.length > 0 ? (
+                {displayResult.topFindings.length > 0 ? (
                   <div className="space-y-2">
-                    {auditMutation.data.topFindings.slice(0, 5).map((finding, idx) => (
+                    {displayResult.topFindings.slice(0, 5).map((finding, idx) => (
                       <FindingRow key={idx} finding={finding} />
                     ))}
                   </div>
@@ -687,7 +722,7 @@ export default function Home() {
           </div>
         )}
 
-        {!auditMutation.data && !auditMutation.isPending && (
+        {!displayResult && !auditMutation.isPending && !isLoadingResult && (
           <div className="text-center py-16">
             <div className="p-4 rounded-full bg-muted/50 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
               <Search className="w-8 h-8 text-muted-foreground" />
@@ -706,7 +741,7 @@ export default function Home() {
             <Globe className="w-5 h-5 text-muted-foreground" />
             <h2 className="text-lg font-semibold">Recent Audits</h2>
           </div>
-          <Showcase />
+          <Showcase onSelect={handleShowcaseSelect} />
         </div>
       </div>
     </div>
