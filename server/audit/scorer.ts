@@ -295,10 +295,11 @@ function scoreContentSelfContainment(
   }
 
   if (jsRendered) {
+    score -= 10;
     findings.push(
       createFinding(
-        "low",
-        "JS-rendered site detected — content length checks skipped as static HTML parsing cannot accurately measure page content."
+        "high",
+        "Site is JavaScript-rendered. AI crawlers (GPTBot, Claude-Web, etc.) cannot index JS-rendered content. Most page content is invisible to AI agents. Consider server-side rendering (SSR) or static site generation (SSG)."
       )
     );
   } else {
