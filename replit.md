@@ -13,12 +13,11 @@ DAIDS crawls documentation sites like an AI indexing agent would and produces a 
 - **Web UI**: Lighthouse-style professional interface with score gauge
 - **Export**: Markdown and PDF report generation
 - **Analytics**: Usage tracking dashboard at /analytics
-- **5 Scoring Categories** (AI Agent Focused):
-  1. AI Crawl Accessibility (llms.txt, robots.txt, sitemap.xml, /ai landing page)
-  2. Structured Data & Machine Readability (JSON-LD, OpenAPI specs, meta tags)
-  3. Content Self-Containment (FAQ sections, prerequisites, complete pages)
-  4. Code & API Usability (language-tagged code blocks, multi-language examples)
-  5. Documentation Architecture (internal linking, heading hierarchy, freshness signals)
+- **4 Scoring Categories** (AI Agent Focused):
+  1. AI Crawl Accessibility (llms.txt, robots.txt, sitemap.xml)
+  2. Structured Data & Machine Readability (JSON-LD, OpenAPI specs)
+  3. Content Self-Containment (FAQ sections, complete pages)
+  4. Documentation Architecture (internal linking, heading hierarchy, freshness signals)
 
 ## Security
 

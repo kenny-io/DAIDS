@@ -383,44 +383,7 @@ function scoreContentSelfContainment(
   };
 }
 
-function scoreCodeAndAPIUsability(pages: ExtractedPage[]): CategoryResult {
-  const findings: Finding[] = [];
-  let score = MAX_CATEGORY_SCORE;
 
-  const validPages = pages.filter((p) => !p.error);
-  if (validPages.length === 0) {
-    return { name: "Code & API Usability", score: 0, max: MAX_CATEGORY_SCORE, findings: [] };
-  }
-
-  const pagesWithCode = validPages.filter((p) => p.codeBlocks.length > 0);
-  const codeRatio = pagesWithCode.length / validPages.length;
-
-  if (codeRatio < 0.3) {
-    const deduction = Math.min(5, Math.ceil((0.3 - codeRatio) * 15));
-    score -= deduction;
-    findings.push(
-      createFinding(
-        codeRatio < 0.1 ? "high" : "med",
-        `Only ${Math.round(codeRatio * 100)}% of pages have code examples. Developers rely on copy-paste ready snippets.`,
-        validPages.filter((p) => p.codeBlocks.length === 0).map((p) => p.url)
-      )
-    );
-  } else {
-    findings.push(
-      createFinding(
-        "pass",
-        `${Math.round(codeRatio * 100)}% of pages have code examples for developers.`
-      )
-    );
-  }
-
-  return {
-    name: "Code & API Usability",
-    score: Math.max(0, score),
-    max: MAX_CATEGORY_SCORE,
-    findings,
-  };
-}
 
 function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult {
   const findings: Finding[] = [];
@@ -576,7 +539,6 @@ export function scoreAll(
     scoreAICrawlAccessibility(aiFiles, pages),
     scoreStructuredDataAndMachineReadability(pages),
     scoreContentSelfContainment(pages, chunks),
-    scoreCodeAndAPIUsability(pages),
     scoreDocumentationArchitecture(pages),
   ];
 
