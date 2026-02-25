@@ -327,29 +327,6 @@ function scoreContentSelfContainment(
     }
   }
 
-  const pagesWithFAQ = validPages.filter(
-    (p) => p.hasFAQSchema || p.faqItems.length > 0
-  );
-  const faqRatio = pagesWithFAQ.length / validPages.length;
-
-  if (faqRatio < 0.05) {
-    score -= 4;
-    findings.push(
-      createFinding(
-        "med",
-        "Few pages use FAQ format. AI agents perform better with Q&A-structured content that matches natural queries."
-      )
-    );
-  } else {
-    findings.push(
-      createFinding(
-        "pass",
-        `${pagesWithFAQ.length} pages have FAQ/Q&A content structure for better query matching.`,
-        pagesWithFAQ.map((p) => p.url)
-      )
-    );
-  }
-
   const shortChunks = chunks.filter((c) => c.tokenEstimate < 50);
   const longChunks = chunks.filter((c) => c.tokenEstimate > 800);
   const goodChunks = chunks.filter((c) => c.tokenEstimate >= 50 && c.tokenEstimate <= 800);
