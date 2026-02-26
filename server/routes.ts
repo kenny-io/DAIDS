@@ -158,7 +158,8 @@ export async function registerRoutes(
 
   app.get("/api/audit/:id", (req: Request, res: Response) => {
     try {
-      const result = analyticsStore.getResultById(req.params.id);
+      const id = req.params.id as string;
+      const result = analyticsStore.getResultById(id);
       if (!result) {
         return res.status(404).json({ error: true, message: "Audit result not found" });
       }
