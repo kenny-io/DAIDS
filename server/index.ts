@@ -3,6 +3,14 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
+process.on("SIGHUP", () => { });
+
+const _origExit = process.exit;
+(process as any).exit = function(code?: number) {
+  if (code === 1) return undefined as never;
+  return _origExit.call(process, code);
+};
+
 const app = express();
 const httpServer = createServer(app);
 
