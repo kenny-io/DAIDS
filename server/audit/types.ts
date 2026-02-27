@@ -91,6 +91,7 @@ export type FindingSeverity = "pass" | "low" | "med" | "high";
 export interface Finding {
   severity: FindingSeverity;
   message: string;
+  detail?: string;
   urls: string[];
 }
 

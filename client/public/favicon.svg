@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DAIDS favicon">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563eb" />
+      <stop offset="1" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#bg)" />
+
+  <rect x="16" y="16" width="24" height="32" rx="5" fill="#ffffff" opacity="0.95" />
+  <rect x="21" y="24" width="14" height="3" rx="1.5" fill="#2563eb" />
+  <rect x="21" y="30" width="14" height="3" rx="1.5" fill="#2563eb" />
+  <rect x="21" y="36" width="10" height="3" rx="1.5" fill="#2563eb" />
+
+  <path d="M46 16L47.8 20.2L52 22L47.8 23.8L46 28L44.2 23.8L40 22L44.2 20.2Z" fill="#38bdf8" />
+</svg>

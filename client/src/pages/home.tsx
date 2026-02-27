@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -23,27 +24,15 @@ import {
   Shield,
   Download,
   ExternalLink,
-  Zap,
   BarChart3,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Globe
+  Globe,
+  ArrowUpDown,
 } from "lucide-react";
 import type { AuditResult, AuditRequest, Finding, CategoryResult } from "@shared/audit-types";
-import type { AuditAnalyticsEntry } from "@shared/analytics-types";
-
-interface ShowcaseResponse {
-  items: AuditAnalyticsEntry[];
-  pagination: {
-    page: number;
-    limit: number;
-    totalItems: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-}
+import type { AuditAnalyticsEntry, ShowcaseResponse } from "@shared/analytics-types";
 
 const categoryIcons: Record<string, typeof Search> = {
   "Agent discovery readiness": Target,
@@ -293,17 +282,16 @@ function ShowcaseCard({ entry, onClick }: { entry: AuditAnalyticsEntry; onClick:
       data-testid={`showcase-card-${entry.id}`}
       onClick={() => onClick(entry.id)}
     >
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          <ScoreGauge score={entry.score} size="small" />
-          <div className="flex-1 min-w-0">
-            <div className="font-medium text-sm inline-flex items-center gap-1 truncate max-w-full">
-              <Globe className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">{entry.domain}</span>
-            </div>
-            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-              <span>{entry.crawledPages} pages</span>
-              <span>{timeAgo}</span>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <ScoreGauge score={entry.score} size="small" />
+            <div className="min-w-0">
+              <div className="font-medium text-sm inline-flex items-center gap-1 truncate max-w-full">
+                <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{entry.domain}</span>
+              </div>
+              <div className="text-xs text-muted-foreground truncate mt-1">{entry.url}</div>
             </div>
           </div>
           <Badge 
@@ -312,6 +300,10 @@ function ShowcaseCard({ entry, onClick }: { entry: AuditAnalyticsEntry; onClick:
           >
             {getScoreLabel(entry.score)}
           </Badge>
+        </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{entry.crawledPages} pages</span>
+          <span>{timeAgo}</span>
         </div>
       </CardContent>
     </Card>
@@ -332,11 +324,19 @@ function getTimeAgo(date: Date): string {
 
 function Showcase({ onSelect }: { onSelect: (id: string) => void }) {
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<"createdAt" | "score">("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const { data, isLoading } = useQuery<ShowcaseResponse>({
-    queryKey: ["/api/showcase", page],
+    queryKey: ["/api/showcase", page, sortBy, sortDir],
     queryFn: async () => {
-      const res = await fetch(`/api/showcase?page=${page}&limit=10`);
+      const query = new URLSearchParams({
+        page: String(page),
+        limit: "18",
+        sortBy,
+        sortDir,
+      });
+      const res = await fetch(`/api/showcase?${query.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch showcase");
       return res.json();
     },
@@ -374,10 +374,55 @@ function Showcase({ onSelect }: { onSelect: (id: string) => void }) {
     );
   }
 
+  const sortedItems = [...data.items].sort((a, b) => {
+    if (sortBy === "score") {
+      if (a.score !== b.score) {
+        return sortDir === "asc" ? a.score - b.score : b.score - a.score;
+      }
+      const aTime = new Date(a.createdAt).getTime();
+      const bTime = new Date(b.createdAt).getTime();
+      return sortDir === "asc" ? aTime - bTime : bTime - aTime;
+    }
+
+    const aTime = new Date(a.createdAt).getTime();
+    const bTime = new Date(b.createdAt).getTime();
+    return sortDir === "asc" ? aTime - bTime : bTime - aTime;
+  });
+
   return (
     <div className="space-y-4" data-testid="showcase-section">
-      <div className="space-y-3">
-        {data.items.map((entry) => (
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-xs text-muted-foreground">
+          Showing {data.items.length} of {data.pagination.totalItems} audits
+        </div>
+        <div className="w-full sm:w-64" data-testid="showcase-sort-select">
+          <Select
+            value={`${sortBy}:${sortDir}`}
+            onValueChange={(value) => {
+              const [nextSortBy, nextSortDir] = value.split(":") as ["createdAt" | "score", "asc" | "desc"];
+              setSortBy(nextSortBy);
+              setSortDir(nextSortDir);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-9">
+              <div className="inline-flex items-center gap-2">
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <SelectValue placeholder="Sort audits" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="createdAt:desc">Newest first</SelectItem>
+              <SelectItem value="createdAt:asc">Oldest first</SelectItem>
+              <SelectItem value="score:desc">Docs score: high to low</SelectItem>
+              <SelectItem value="score:asc">Docs score: low to high</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {sortedItems.map((entry) => (
           <ShowcaseCard key={entry.id} entry={entry} onClick={onSelect} />
         ))}
       </div>
@@ -487,6 +532,7 @@ export default function Home() {
       return await response.json() as AuditResult;
     },
     onSuccess: () => {
+      setUrl("");
       setSelectedAuditId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/showcase"] });
     },
@@ -540,8 +586,8 @@ export default function Home() {
       <div className="border-b bg-card/50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Zap className="w-5 h-5 text-primary" />
+            <div className="h-9 w-9 rounded-lg overflow-hidden ring-1 ring-primary/20 shadow-sm">
+              <img src="/logo-mark.svg" alt="DAIDS" className="h-full w-full" />
             </div>
             <div>
               <h1 className="font-semibold">DAIDS</h1>
@@ -560,6 +606,26 @@ export default function Home() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="text-center mb-6" data-testid="audit-intro">
+          <div className="p-4 rounded-full bg-muted/50 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <Search className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Audit Your Documentation</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Analyze how well your docs are optimized for AI agents and retrieval systems, then get prioritized fixes.
+          </p>
+          <ul className="mt-4 text-sm text-muted-foreground max-w-3xl mx-auto text-left grid gap-1 sm:grid-cols-2">
+            <li><strong>Agent discovery readiness</strong> — checks crawl signals like llms.txt, robots rules, and sitemap coverage.</li>
+            <li><strong>Structure and chunkability</strong> — checks heading hierarchy, page structure, and chunk-friendly content.</li>
+            <li><strong>Retrieval self-containment</strong> — checks whether pages can answer questions without missing context.</li>
+            <li><strong>Agent usability for developers</strong> — checks code examples, API references, and implementation guidance.</li>
+            <li className="sm:col-span-2"><strong>Trust and freshness signals</strong> — checks metadata quality, maintenance indicators, and reliability cues.</li>
+          </ul>
+          <p className="mt-3 text-xs text-muted-foreground/80" data-testid="text-fresh-runs-note">
+            Every audit run is generated fresh for the current site state, results are not served from cache.
+          </p>
+        </div>
+
         <Card className="mb-8" data-testid="card-audit-form">
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -719,18 +785,6 @@ export default function Home() {
                 )}
               </div>
             </div>
-          </div>
-        )}
-
-        {!displayResult && !auditMutation.isPending && !isLoadingResult && (
-          <div className="text-center py-16">
-            <div className="p-4 rounded-full bg-muted/50 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-              <Search className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Audit Your Documentation</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Enter a docs URL above to analyze how well your documentation is optimized for AI agents and retrieval systems.
-            </p>
           </div>
         )}
 

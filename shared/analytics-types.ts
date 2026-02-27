@@ -10,6 +10,23 @@ export interface AuditAnalyticsEntry {
   createdAt: string;
 }
 
+export type ShowcaseSortBy = "createdAt" | "score";
+export type SortDirection = "asc" | "desc";
+
+export interface ShowcasePagination {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface ShowcaseResponse {
+  items: AuditAnalyticsEntry[];
+  pagination: ShowcasePagination;
+}
+
 export interface AnalyticsSummary {
   totalAudits: number;
   avgScore: number;

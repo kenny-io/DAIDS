@@ -4,6 +4,7 @@ import { runAudit, AuditConfigSchema } from "./audit";
 import { analyticsStore } from "./analytics";
 import { generateMarkdown, generatePDF } from "./export";
 import { z } from "zod";
+import type { ShowcaseSortBy, SortDirection } from "@shared/analytics-types";
 
 const AuditRequestSchema = z.object({
   url: z.string().url(),
@@ -33,7 +34,7 @@ export async function registerRoutes(
 
       const result = await runAudit(parsed.data);
 
-      analyticsStore.recordAudit(result);
+      await analyticsStore.recordAudit(result);
 
       res.json(result);
     } catch (error: any) {
@@ -103,9 +104,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/analytics", (_req: Request, res: Response) => {
+  app.get("/api/analytics", async (_req: Request, res: Response) => {
     try {
-      const summary = analyticsStore.getSummary();
+      const summary = await analyticsStore.getSummary();
       res.json(summary);
     } catch (error: any) {
       res.status(500).json({
@@ -115,9 +116,11 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/analytics/all", (_req: Request, res: Response) => {
+  app.get("/api/analytics/all", async (req: Request, res: Response) => {
     try {
-      const entries = analyticsStore.getAll();
+      const sortBy = req.query.sortBy === "score" ? "score" : "createdAt";
+      const sortDir = req.query.sortDir === "asc" ? "asc" : "desc";
+      const entries = await analyticsStore.getAll(sortBy, sortDir);
       res.json(entries);
     } catch (error: any) {
       res.status(500).json({
@@ -127,27 +130,21 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/showcase", (req: Request, res: Response) => {
+  app.get("/api/showcase", async (req: Request, res: Response) => {
     try {
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
-      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
-      const entries = analyticsStore.getAll();
-      const totalItems = entries.length;
-      const totalPages = Math.ceil(totalItems / limit);
-      const offset = (page - 1) * limit;
-      const items = entries.slice(offset, offset + limit);
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 18));
+      const sortBy: ShowcaseSortBy = req.query.sortBy === "score" ? "score" : "createdAt";
+      const sortDir: SortDirection = req.query.sortDir === "asc" ? "asc" : "desc";
 
-      res.json({
-        items,
-        pagination: {
-          page,
-          limit,
-          totalItems,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1,
-        },
+      const response = await analyticsStore.getShowcase({
+        page,
+        limit,
+        sortBy,
+        sortDir,
       });
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         error: true,
@@ -156,10 +153,10 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/audit/:id", (req: Request, res: Response) => {
+  app.get("/api/audit/:id", async (req: Request, res: Response) => {
     try {
       const id = req.params.id as string;
-      const result = analyticsStore.getResultById(id);
+      const result = await analyticsStore.getResultById(id);
       if (!result) {
         return res.status(404).json({ error: true, message: "Audit result not found" });
       }

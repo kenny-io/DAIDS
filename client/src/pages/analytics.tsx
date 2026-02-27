@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { BarChart3, TrendingUp, Globe, Clock, Zap, ArrowLeft } from "lucide-react";
+import { BarChart3, TrendingUp, Globe, Clock, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import type { AnalyticsSummary } from "@shared/analytics-types";
 
@@ -110,8 +110,8 @@ export default function Analytics() {
       <div className="border-b bg-card/50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Zap className="w-5 h-5 text-primary" />
+            <div className="h-9 w-9 rounded-lg overflow-hidden ring-1 ring-primary/20 shadow-sm">
+              <img src="/logo-mark.svg" alt="DAIDS" className="h-full w-full" />
             </div>
             <div>
               <h1 className="font-semibold">DAIDS Analytics</h1>

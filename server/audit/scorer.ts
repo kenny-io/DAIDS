@@ -13,13 +13,16 @@ const TOP_URLS_LIMIT = 10;
 function createFinding(
   severity: FindingSeverity,
   message: string,
-  urls: string[] = []
+  urls: string[] = [],
+  detail?: string
 ): Finding {
-  return {
+  const finding: Finding = {
     severity,
     message,
     urls: urls.slice(0, TOP_URLS_LIMIT),
   };
+  if (detail) finding.detail = detail;
+  return finding;
 }
 
 function scoreAICrawlAccessibility(
@@ -34,7 +37,9 @@ function scoreAICrawlAccessibility(
     findings.push(
       createFinding(
         "high",
-        "No llms.txt file found. This file helps AI agents understand your site structure and content."
+        "No llms.txt file found. This file helps AI agents understand your site structure and content.",
+        [],
+        "llms.txt is a plain-text file placed at the root of your domain (e.g. example.com/llms.txt) that tells AI agents what your product is, where key documentation lives, and what use cases it serves. Without it, AI crawlers have to guess your site's structure. Creating one is simple — it's just a text file with a product description, links to important doc sections, and common use cases. See llmstxt.org for the specification."
       )
     );
   } else {
@@ -45,7 +50,9 @@ function scoreAICrawlAccessibility(
       findings.push(
         createFinding(
           "med",
-          "llms.txt exists but lacks a clear product description."
+          "llms.txt exists but lacks a clear product description.",
+          [],
+          "Your llms.txt file should start with a concise description of what your product does. This helps AI agents understand the context of your documentation and provide more accurate recommendations. Add 1-3 sentences at the top describing your product's purpose and key capabilities."
         )
       );
     }
@@ -55,7 +62,9 @@ function scoreAICrawlAccessibility(
       findings.push(
         createFinding(
           "med",
-          "llms.txt should include links to key documentation sections."
+          "llms.txt should include links to key documentation sections.",
+          [],
+          "AI agents use llms.txt as a table of contents. Without links, they can't efficiently navigate to the right documentation sections. Add URLs to your most important pages — getting started guides, API references, tutorials, and configuration docs. This dramatically reduces the number of pages an AI needs to crawl to find relevant information."
         )
       );
     }
@@ -65,7 +74,9 @@ function scoreAICrawlAccessibility(
       findings.push(
         createFinding(
           "low",
-          "llms.txt should describe common use cases for better AI recommendations."
+          "llms.txt should describe common use cases for better AI recommendations.",
+          [],
+          "Including use cases in your llms.txt helps AI agents match user questions to relevant documentation. For example, 'Use case: Authentication — see /docs/auth' helps an AI agent know exactly where to look when a user asks about authentication. List your 3-5 most common use cases with pointers to the relevant docs."
         )
       );
     }
@@ -84,7 +95,9 @@ function scoreAICrawlAccessibility(
     findings.push(
       createFinding(
         "med",
-        "No robots.txt file found. AI crawlers need clear access rules."
+        "No robots.txt file found. AI crawlers need clear access rules.",
+        [],
+        "robots.txt is a standard file that tells web crawlers which pages they can and cannot access. Without one, AI crawlers may index content you don't want indexed, or may be overly cautious and skip your docs entirely. Create a robots.txt at your site root with explicit rules for AI user agents like GPTBot, Claude-Web, and Amazonbot. A simple 'User-agent: * Allow: /' is a good starting point."
       )
     );
   } else {
@@ -95,7 +108,9 @@ function scoreAICrawlAccessibility(
       findings.push(
         createFinding(
           "high",
-          "robots.txt blocks AI crawlers (GPTBot, Claude-Web, etc). Your content won't be indexed by AI agents."
+          "robots.txt blocks AI crawlers (GPTBot, Claude-Web, etc). Your content won't be indexed by AI agents.",
+          [],
+          "Your robots.txt currently disallows access for AI-specific crawlers. This means AI assistants like ChatGPT, Claude, and others cannot read your documentation, making it invisible in AI-generated answers. If this is intentional for certain sections, consider allowing access to your public documentation while blocking sensitive areas. Add explicit 'Allow' rules for GPTBot, Claude-Web, and other AI user agents for your documentation paths."
         )
       );
     } else if (!aiFiles.robotsTxt.allowsAICrawlers && aiFiles.robotsTxt.aiCrawlerRules.length === 0) {
@@ -104,7 +119,9 @@ function scoreAICrawlAccessibility(
       findings.push(
         createFinding(
           "low",
-          "robots.txt doesn't explicitly allow AI crawlers. Consider adding rules for GPTBot, Claude-Web, etc."
+          "robots.txt doesn't explicitly allow AI crawlers. Consider adding rules for GPTBot, Claude-Web, etc.",
+          [],
+          "While your robots.txt doesn't block AI crawlers, it also doesn't explicitly allow them. Some AI crawlers are conservative and may not index your content without explicit permission. Adding specific user-agent rules like 'User-agent: GPTBot Allow: /' signals that your documentation is AI-friendly and should be indexed."
         )
       );
     }
@@ -114,7 +131,9 @@ function scoreAICrawlAccessibility(
       findings.push(
         createFinding(
           "low",
-          "robots.txt should reference your sitemap.xml for better crawl discovery."
+          "robots.txt should reference your sitemap.xml for better crawl discovery.",
+          [],
+          "Adding a 'Sitemap: https://yourdomain.com/sitemap.xml' line to your robots.txt helps crawlers discover your sitemap automatically. This is especially useful for AI crawlers that start by reading robots.txt — they'll immediately know where to find your complete page listing without having to guess the sitemap location."
         )
       );
     }
@@ -133,7 +152,9 @@ function scoreAICrawlAccessibility(
     findings.push(
       createFinding(
         "high",
-        "No sitemap.xml found. AI crawlers rely heavily on sitemaps for page discovery."
+        "No sitemap.xml found. AI crawlers rely heavily on sitemaps for page discovery.",
+        [],
+        "A sitemap.xml file lists all the pages on your site in a machine-readable format. AI crawlers use sitemaps as their primary method of discovering pages — without one, they may miss large portions of your documentation. Create a sitemap.xml at your site root listing all documentation pages. Most static site generators and CMS platforms can generate one automatically. Include <lastmod> dates so crawlers know which content is fresh."
       )
     );
   } else {
@@ -144,7 +165,9 @@ function scoreAICrawlAccessibility(
       findings.push(
         createFinding(
           "low",
-          "Sitemap lacks <lastmod> dates. Adding these helps AI agents prioritize fresh content."
+          "Sitemap lacks <lastmod> dates. Adding these helps AI agents prioritize fresh content.",
+          [],
+          "The <lastmod> element in your sitemap tells crawlers when each page was last updated. AI agents use this to prioritize fresh content and skip pages that haven't changed. Without these dates, crawlers treat all pages equally and may waste time re-indexing unchanged content. Add <lastmod> dates in ISO 8601 format (e.g. 2024-01-15) to each <url> entry in your sitemap."
         )
       );
     }
@@ -154,7 +177,9 @@ function scoreAICrawlAccessibility(
       findings.push(
         createFinding(
           "med",
-          `Sitemap only covers ${Math.round(aiFiles.sitemap.coverageRatio * 100)}% of crawled pages. Many pages may be undiscoverable.`
+          `Sitemap only covers ${Math.round(aiFiles.sitemap.coverageRatio * 100)}% of crawled pages. Many pages may be undiscoverable.`,
+          [],
+          "Your sitemap lists significantly fewer pages than were found during crawling. This means many of your documentation pages are not included in the sitemap and may be missed by AI crawlers that rely on sitemaps for page discovery. Update your sitemap to include all public documentation pages. If some pages are intentionally excluded, ensure they're still reachable through internal links."
         )
       );
     }
@@ -197,7 +222,8 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
         createFinding(
           "med",
           `FAQ content detected but no FAQPage JSON-LD schema. Adding this schema significantly improves AI citation likelihood.`,
-          validPages.filter((p) => p.faqItems.length > 0).map((p) => p.url)
+          validPages.filter((p) => p.faqItems.length > 0).map((p) => p.url),
+          "Your documentation contains FAQ-style content (question and answer patterns), but it's not marked up with FAQPage JSON-LD schema. AI systems like Google's Search Generative Experience heavily prioritize FAQ structured data when generating answers. Adding FAQPage schema wraps your Q&A content in a format AI can parse directly, making it much more likely to be cited. You can add this as a <script type=\"application/ld+json\"> block in the page head."
         )
       );
     } else {
@@ -205,7 +231,9 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
       findings.push(
         createFinding(
           "low",
-          `No JSON-LD structured data found. Optional for docs, but FAQPage/TechArticle schemas can improve AI visibility.`
+          `No JSON-LD structured data found. Optional for docs, but FAQPage/TechArticle schemas can improve AI visibility.`,
+          [],
+          "JSON-LD (JavaScript Object Notation for Linked Data) is a way to embed structured metadata in your pages using <script type=\"application/ld+json\"> tags. While not strictly required, adding schemas like TechArticle, HowTo, or FAQPage helps AI systems understand your content's type and structure. This metadata gives AI agents additional context beyond the raw text, improving how they categorize and cite your documentation."
         )
       );
     }
@@ -214,7 +242,8 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
       createFinding(
         "low",
         `${Math.round(jsonLdRatio * 100)}% of pages have JSON-LD. Consider expanding coverage.`,
-        validPages.filter((p) => !p.hasJsonLd).map((p) => p.url)
+        validPages.filter((p) => !p.hasJsonLd).map((p) => p.url),
+        "Some of your pages have JSON-LD structured data, but coverage is below 50%. The listed pages lack structured data. Expanding coverage ensures AI agents have consistent metadata across your documentation. Consider adding TechArticle or Article schemas to your remaining pages — many static site generators support this through templates, so you can add it once and apply it everywhere."
       )
     );
   } else {
@@ -236,7 +265,9 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
     findings.push(
       createFinding(
         "low",
-        "JSON-LD exists but lacks documentation-specific types (TechArticle, HowTo, APIReference). Use richer schema types."
+        "JSON-LD exists but lacks documentation-specific types (TechArticle, HowTo, APIReference). Use richer schema types.",
+        [],
+        "Your pages have JSON-LD, but they use generic types like 'WebPage' or 'Article'. Documentation-specific schema types give AI agents much richer signals. TechArticle tells an AI that the page contains technical content; HowTo indicates step-by-step instructions; FAQPage marks question-answer content. Using these types helps AI systems categorize your content correctly and surface it for the right queries. Update your JSON-LD @type field to use the most specific type that matches your content."
       )
     );
   } else if (hasRichTypes) {
@@ -259,7 +290,8 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
         createFinding(
           "high",
           "API documentation detected but no OpenAPI/Swagger spec link found. Machine-readable API specs are critical for AI agents.",
-          validPages.filter((p) => /api/i.test(p.url)).map((p) => p.url)
+          validPages.filter((p) => /api/i.test(p.url)).map((p) => p.url),
+          "Your documentation includes API-related content (endpoints, requests, responses), but no link to an OpenAPI or Swagger specification was found. OpenAPI specs are the gold standard for machine-readable API documentation — AI agents can parse them to understand every endpoint, parameter, request body, and response format without scraping HTML. Host your OpenAPI spec as a JSON or YAML file and link to it from your API docs. Tools like Swagger UI, Redoc, or Stoplight can generate documentation from the spec automatically."
         )
       );
     }
@@ -299,7 +331,9 @@ function scoreContentSelfContainment(
     findings.push(
       createFinding(
         "high",
-        "Site is JavaScript-rendered. AI crawlers (GPTBot, Claude-Web, etc.) cannot index JS-rendered content. Most page content is invisible to AI agents. Consider server-side rendering (SSR) or static site generation (SSG)."
+        "Site is JavaScript-rendered. AI crawlers (GPTBot, Claude-Web, etc.) cannot index JS-rendered content. Most page content is invisible to AI agents. Consider server-side rendering (SSR) or static site generation (SSG).",
+        [],
+        "Your documentation site relies on client-side JavaScript to render content. When an AI crawler requests your pages, it receives a mostly empty HTML shell because it doesn't execute JavaScript. This means the actual documentation text, code examples, and navigation are invisible to AI agents. This is the single most impactful issue for AI discoverability. To fix this, switch to server-side rendering (SSR) using frameworks like Next.js or Nuxt, or use static site generation (SSG) with tools like Docusaurus, MkDocs, or Hugo. These approaches serve fully-rendered HTML that any crawler can read."
       )
     );
   } else {
@@ -314,7 +348,8 @@ function scoreContentSelfContainment(
         createFinding(
           "high",
           `${thinPages.length} pages have thin content (<300 chars). AI agents need substantial, self-contained information.`,
-          thinPages.map((p) => p.url)
+          thinPages.map((p) => p.url),
+          "These pages have very little text content (under 300 characters). When an AI retrieval system indexes a thin page, it produces a chunk that lacks enough context to generate a useful answer. Pages that serve as mere redirects, contain only a title, or rely heavily on images/videos without text descriptions are common culprits. Consider expanding these pages with descriptive text, or consolidating thin pages into more substantial parent pages. Every page should be able to stand on its own as a useful answer."
         )
       );
     } else {
@@ -338,7 +373,8 @@ function scoreContentSelfContainment(
       createFinding(
         "med",
         `${shortChunks.length} chunks are too short (<50 tokens). Content may lack context when retrieved.`,
-        Array.from(new Set(shortChunks.map((c) => c.pageUrl)))
+        Array.from(new Set(shortChunks.map((c) => c.pageUrl))),
+        "When AI retrieval systems index your documentation, they split pages into 'chunks' — sections of text typically divided by headings. A chunk under 50 tokens (roughly 1-2 short sentences) doesn't carry enough context for an AI to generate a useful answer from it alone. Short chunks often result from pages with many small headings, sparse content under each section, or navigation-heavy pages. The listed URLs contributed the most short chunks. To improve this, consolidate small sections under fewer headings, or add more descriptive text to brief sections."
       )
     );
   }
@@ -349,7 +385,8 @@ function scoreContentSelfContainment(
       createFinding(
         "low",
         `${longChunks.length} chunks exceed 800 tokens. Consider better heading structure for improved chunking.`,
-        Array.from(new Set(longChunks.map((c) => c.pageUrl)))
+        Array.from(new Set(longChunks.map((c) => c.pageUrl))),
+        "Chunks over 800 tokens (roughly a full page of text) are too long for most AI retrieval systems to handle efficiently. When a chunk is too large, the AI may struggle to identify the relevant portion, or the chunk may get truncated. Long chunks usually result from pages with very few headings — large walls of text with no structural breaks. Adding more H2/H3 headings to break up long sections creates natural chunk boundaries, making each piece of content more focused and retrievable."
       )
     );
   }
@@ -391,7 +428,8 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
       createFinding(
         "high",
         `Low internal linking: average ${avgInternalLinks.toFixed(1)} links per page. AI agents use link structure to understand relationships.`,
-        validPages.filter((p) => p.internalLinkCount < 2).map((p) => p.url)
+        validPages.filter((p) => p.internalLinkCount < 2).map((p) => p.url),
+        "Internal links are how AI crawlers discover pages and understand how concepts relate to each other. With fewer than 3 links per page on average, your documentation appears disconnected — AI agents can't navigate between related topics, and pages without incoming links may never be discovered. Add 'See also' sections, link to related guides from within your content, and ensure every page links to at least 2-3 related pages. Good cross-linking also helps AI agents understand which pages are most important (more links = higher authority)."
       )
     );
   } else if (avgInternalLinks < 5) {
@@ -399,7 +437,9 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
     findings.push(
       createFinding(
         "med",
-        `Moderate internal linking: ${avgInternalLinks.toFixed(1)} links per page. Consider adding more cross-references.`
+        `Moderate internal linking: ${avgInternalLinks.toFixed(1)} links per page. Consider adding more cross-references.`,
+        [],
+        "Your documentation has some internal linking, but there's room for improvement. AI crawlers use link density and structure to understand page relationships and importance. Adding more contextual links — such as 'Related guides', 'Prerequisites', and inline references to other doc pages — helps AI agents build a richer understanding of your content graph. Aim for 5+ internal links per page through navigation, breadcrumbs, and in-content references."
       )
     );
   } else {
@@ -423,7 +463,8 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
       createFinding(
         "med",
         `${pagesWithBadH1.length} pages have missing or multiple H1 headings. Each page should have exactly one H1.`,
-        pagesWithBadH1.map((p) => p.url)
+        pagesWithBadH1.map((p) => p.url),
+        "Each documentation page should have exactly one H1 heading that clearly describes the page's topic. AI agents use the H1 as the primary identifier for what a page is about — it's the 'title' of the content chunk. Pages with no H1 leave AI agents guessing, and pages with multiple H1s create confusion about the page's primary topic. Check the listed pages and ensure each has a single, descriptive H1. If your framework generates duplicate H1s (e.g., from both a title field and the content), adjust your template."
       )
     );
   } else {
@@ -449,7 +490,8 @@ function scoreDocumentationArchitecture(pages: ExtractedPage[]): CategoryResult 
       createFinding(
         "low",
         `${pagesWithSkippedLevels.length} pages skip heading levels (e.g., H2 to H4). Proper hierarchy aids content chunking.`,
-        pagesWithSkippedLevels.map((p) => p.url)
+        pagesWithSkippedLevels.map((p) => p.url),
+        "Heading hierarchy (H1 > H2 > H3 > H4) is how AI chunking systems determine section boundaries and parent-child relationships between content. When you skip levels (e.g., jumping from H2 to H4), the chunker can't properly nest content, leading to chunks that lose their hierarchical context. For example, a subsection under 'Authentication > OAuth > Token Refresh' becomes just 'Token Refresh' with no parent context. Fix this by ensuring headings follow a sequential order without gaps."
       )
     );
   } else {
