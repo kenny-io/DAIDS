@@ -578,7 +578,7 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const displayResult = auditMutation.data ?? showcaseQuery.data ?? null;
+  const displayResult = selectedAuditId ? showcaseQuery.data ?? null : auditMutation.data ?? null;
   const isLoadingResult = showcaseQuery.isLoading && !!selectedAuditId;
 
   return (
