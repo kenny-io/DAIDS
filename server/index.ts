@@ -4,6 +4,14 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 
 process.on("SIGHUP", () => { });
+process.on("SIGTERM", () => { process.exit(0); });
+
+process.on("uncaughtException", (err) => {
+  console.error("[fatal] uncaughtException:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[fatal] unhandledRejection:", reason);
+});
 
 const _origExit = process.exit;
 (process as any).exit = function(code?: number) {
@@ -96,10 +104,12 @@ app.use((req, res, next) => {
   // Serve both the API and client on PORT.
   // Default to 5000 if PORT is not set.
   const port = parseInt(process.env.PORT || "4000", 10);
+  const host = "0.0.0.0";
+  console.log(`[startup] NODE_ENV=${process.env.NODE_ENV} PORT=${port} HOST=${host}`);
   httpServer.listen(
     {
       port,
-      host: "localhost",
+      host,
     },
     () => {
       log(`serving on port ${port}`);
