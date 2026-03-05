@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile, writeFile, cp, mkdir } from "fs/promises";
+import https from "https";
 import { Resvg } from "@resvg/resvg-js";
 
 // server deps to bundle to reduce openat(2) syscalls
@@ -81,6 +82,25 @@ async function buildAll() {
   console.log("copying pdfkit font data...");
   await mkdir("dist/data", { recursive: true });
   await cp("node_modules/pdfkit/js/data", "dist/data", { recursive: true });
+
+  // Download Inter font for OG image text rendering (resvg needs explicit fonts)
+  console.log("downloading Inter font for OG images...");
+  try {
+    const interUrl =
+      "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7SUc.woff2";
+    const fontBuf = await new Promise<Buffer>((resolve, reject) => {
+      https.get(interUrl, (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (d: Buffer) => chunks.push(d));
+        res.on("end", () => resolve(Buffer.concat(chunks)));
+        res.on("error", reject);
+      }).on("error", reject);
+    });
+    await writeFile("dist/inter.woff2", fontBuf);
+    console.log(`inter.woff2 saved (${fontBuf.length} bytes)`);
+  } catch (err) {
+    console.warn("inter.woff2 download failed (OG text may not render):", err);
+  }
 }
 
 buildAll().catch((err) => {

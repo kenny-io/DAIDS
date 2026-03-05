@@ -36,6 +36,24 @@ function truncateDomain(domain: string): string {
   return domain;
 }
 
+let _fontBuf: Buffer | null | undefined = undefined;
+
+function getFont(): Buffer | null {
+  if (_fontBuf !== undefined) return _fontBuf;
+  const candidates = [
+    path.join(__dirname, "inter.woff2"),                       // prod (dist/)
+    path.join(process.cwd(), "server", "inter.woff2"),         // dev fallback
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      _fontBuf = fs.readFileSync(p);
+      return _fontBuf;
+    }
+  }
+  _fontBuf = null; // not found, resvg will use system fonts
+  return null;
+}
+
 let _bgDataUri: string | undefined = undefined;
 
 function getBgDataUri(): string {
@@ -160,7 +178,13 @@ export function generateAuditOgImage(
   if (cached && Date.now() - cached.at < TTL_MS) return cached.png;
 
   const svg = buildAuditSvg(domain, score, crawledPages);
-  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: 1200 } });
+  const fontBuf = getFont();
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: "width", value: 1200 },
+    font: fontBuf
+      ? { fontDatabases: [fontBuf], loadSystemFonts: false, defaultFontFamily: "Inter" }
+      : { loadSystemFonts: true },
+  });
   const png = resvg.render().asPng();
 
   cache.set(cacheKey, { png, at: Date.now() });
