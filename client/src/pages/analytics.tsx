@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Globe, Clock, ArrowLeft } from "lucide-react";
+import { BarChart3, TrendingUp, Globe, Clock, ArrowLeft, Eye } from "lucide-react";
 import { Link } from "wouter";
 import type { AnalyticsSummary } from "@shared/analytics-types";
 
@@ -83,6 +83,10 @@ export default function Analytics() {
     queryKey: ["/api/analytics"],
   });
 
+  const { data: pageviewData } = useQuery<{ count: number }>({
+    queryKey: ["/api/analytics/pageviews"],
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -142,10 +146,11 @@ export default function Analytics() {
         ) : (
           <div className="space-y-8">
             {/* Stat cards */}
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard icon={BarChart3} label="Total Audits" value={data.totalAudits} />
               <StatCard icon={TrendingUp} label="Average Score" value={data.avgScore} subtext="out of 100" />
               <StatCard icon={Globe} label="Unique Domains" value={data.topDomains.length} />
+              <StatCard icon={Eye} label="Page Views" value={pageviewData?.count ?? "—"} />
             </div>
 
             {/* Score distribution */}

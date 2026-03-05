@@ -23,6 +23,7 @@ export interface AuditMeta {
 }
 
 export interface AuditResult {
+  id?: string;
   rootUrl: string;
   crawledPages: number;
   score: number;

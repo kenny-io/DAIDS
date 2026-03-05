@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile, cp, mkdir } from "fs/promises";
+import { rm, readFile, writeFile, cp, mkdir } from "fs/promises";
+import { Resvg } from "@resvg/resvg-js";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -38,6 +39,17 @@ const allowlist = [
 
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
+
+  console.log("generating og-preview.png...");
+  try {
+    const svgContent = await readFile("client/public/og-preview.svg", "utf-8");
+    const resvg = new Resvg(svgContent, { fitTo: { mode: "width", value: 1200 } });
+    const pngBuffer = resvg.render().asPng();
+    await writeFile("client/public/og-preview.png", pngBuffer);
+    console.log(`og-preview.png generated (${pngBuffer.length} bytes)`);
+  } catch (err) {
+    console.warn("og-preview.png generation failed:", err);
+  }
 
   console.log("building client...");
   await viteBuild();

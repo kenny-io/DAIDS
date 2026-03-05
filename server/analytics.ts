@@ -31,6 +31,8 @@ interface IAnalyticsStore {
   getAll(sortBy?: ShowcaseSortBy, sortDir?: SortDirection): Promise<AuditAnalyticsEntry[]>;
   getShowcase(options: ShowcaseQueryOptions): Promise<ShowcaseResponse>;
   getResultById(id: string): Promise<AuditResult | undefined>;
+  recordPageview(path: string, referrer?: string): Promise<void>;
+  getPageviewCount(): Promise<number>;
 }
 
 function loadLocalEnvFiles(): void {
@@ -220,6 +222,16 @@ class MemoryAnalyticsStore implements IAnalyticsStore {
 
   async getResultById(id: string): Promise<AuditResult | undefined> {
     return this.results.get(id);
+  }
+
+  private pageviewCount = 0;
+
+  async recordPageview(_path: string, _referrer?: string): Promise<void> {
+    this.pageviewCount++;
+  }
+
+  async getPageviewCount(): Promise<number> {
+    return this.pageviewCount;
   }
 }
 
@@ -535,6 +547,20 @@ class PostgresAnalyticsStore implements IAnalyticsStore {
 
     return result.rows[0]?.result_json;
   }
+
+  async recordPageview(path: string, referrer?: string): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO pageviews (path, referrer) VALUES ($1, $2)`,
+      [path, referrer || null],
+    );
+  }
+
+  async getPageviewCount(): Promise<number> {
+    const result = await this.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM pageviews`,
+    );
+    return parseInt(result.rows[0]?.count ?? "0", 10);
+  }
 }
 
 class SupabaseAnalyticsStore implements IAnalyticsStore {
@@ -696,6 +722,21 @@ class SupabaseAnalyticsStore implements IAnalyticsStore {
     }
 
     return (data as { result_json: AuditResult })?.result_json;
+  }
+
+  async recordPageview(path: string, referrer?: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("pageviews")
+      .insert({ path, referrer: referrer || null });
+    if (error) throw error;
+  }
+
+  async getPageviewCount(): Promise<number> {
+    const { count, error } = await this.supabase
+      .from("pageviews")
+      .select("*", { count: "exact", head: true });
+    if (error) throw error;
+    return count ?? 0;
   }
 }
 

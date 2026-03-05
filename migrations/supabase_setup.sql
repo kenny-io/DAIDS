@@ -46,9 +46,21 @@ BEGIN
   END IF;
 END $$;
 
+-- Pageview tracking
+CREATE TABLE IF NOT EXISTS public.pageviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  path text NOT NULL,
+  referrer text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS pageviews_created_at_idx ON public.pageviews (created_at DESC);
+
 -- Grant schema and table access to Supabase roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON public.audit_entries TO service_role;
 GRANT ALL ON public.audit_results TO service_role;
+GRANT ALL ON public.pageviews TO service_role;
 GRANT SELECT ON public.audit_entries TO anon, authenticated;
 GRANT SELECT ON public.audit_results TO anon, authenticated;
+GRANT SELECT ON public.pageviews TO anon, authenticated;
