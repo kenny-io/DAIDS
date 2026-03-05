@@ -1,4 +1,6 @@
 import { Resvg } from "@resvg/resvg-js";
+import fs from "fs";
+import path from "path";
 
 function escapeXml(str: string): string {
   return str
@@ -23,15 +25,37 @@ function scoreLabel(score: number): string {
 }
 
 function domainFontSize(domain: string): number {
-  if (domain.length > 40) return 38;
-  if (domain.length > 30) return 48;
-  if (domain.length > 22) return 58;
-  return 68;
+  if (domain.length > 40) return 36;
+  if (domain.length > 30) return 46;
+  if (domain.length > 22) return 56;
+  return 66;
 }
 
 function truncateDomain(domain: string): string {
   if (domain.length > 44) return domain.slice(0, 41) + "…";
   return domain;
+}
+
+let _bgDataUri: string | undefined = undefined;
+
+function getBgDataUri(): string {
+  if (_bgDataUri !== undefined) return _bgDataUri;
+  // Prod: __dirname = dist/, image lands at dist/public/baseog.png via Vite build
+  // Dev: running from project root, image at client/public/baseog.png
+  const candidates = [
+    path.join(__dirname, "public", "baseog.png"),
+    path.join(process.cwd(), "client", "public", "baseog.png"),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      const b64 = fs.readFileSync(p).toString("base64");
+      _bgDataUri = `data:image/png;base64,${b64}`;
+      return _bgDataUri;
+    }
+  }
+  // Fallback: no background image found
+  _bgDataUri = "";
+  return _bgDataUri;
 }
 
 function buildAuditSvg(domain: string, score: number, crawledPages: number): string {
@@ -40,63 +64,84 @@ function buildAuditSvg(domain: string, score: number, crawledPages: number): str
   const fontSize = domainFontSize(displayDomain);
   const color = scoreColor(score);
   const label = scoreLabel(score);
+  const bgUri = getBgDataUri();
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="AuditDocs score for ${domainText}">
+  const bgLayer = bgUri
+    ? `<image href="${bgUri}" x="0" y="0" width="1200" height="630" preserveAspectRatio="xMidYMid slice"/>`
+    : `<rect width="1200" height="630" fill="#0d1b3e"/>`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="AuditDocs score for ${domainText}">
   <defs>
-    <linearGradient id="bg" x1="140" y1="80" x2="1060" y2="550" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1d4ed8" />
-      <stop offset="0.55" stop-color="#1e3a8a" />
-      <stop offset="1" stop-color="#0f172a" />
+    <linearGradient id="scoreGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${color}" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="${color}" stop-opacity="0.05"/>
     </linearGradient>
-    <linearGradient id="panel" x1="240" y1="140" x2="960" y2="500" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="rgba(255,255,255,0.16)" />
-      <stop offset="1" stop-color="rgba(255,255,255,0.08)" />
-    </linearGradient>
-    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#020617" flood-opacity="0.35" />
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
-  <rect width="1200" height="630" fill="#0b1120" />
-  <rect x="40" y="40" width="1120" height="550" rx="40" fill="url(#bg)" />
-  <rect x="88" y="88" width="1024" height="454" rx="30" fill="url(#panel)" stroke="rgba(255,255,255,0.16)" />
+  <!-- Background image -->
+  ${bgLayer}
 
-  <!-- Logo icon -->
-  <g transform="translate(130 148)" filter="url(#soft-shadow)">
-    <rect x="0" y="0" width="130" height="130" rx="30" fill="#0f172a" opacity="0.35" />
-    <rect x="10" y="10" width="110" height="110" rx="24" fill="url(#bg)" />
-    <rect x="35" y="35" width="46" height="62" rx="9" fill="#ffffff" opacity="0.96" />
-    <rect x="43" y="50" width="28" height="5" rx="2.5" fill="#2563eb" />
-    <rect x="43" y="60" width="28" height="5" rx="2.5" fill="#2563eb" />
-    <rect x="43" y="70" width="20" height="5" rx="2.5" fill="#2563eb" />
-    <path d="M89 33L94 43L104 48L94 53L89 63L84 53L74 48L84 43Z" fill="#38bdf8" />
-  </g>
+  <!-- Dark overlay to ensure readability -->
+  <rect width="1200" height="630" fill="rgba(4,12,28,0.52)"/>
 
-  <!-- AuditDocs wordmark -->
-  <text x="292" y="192" fill="rgba(255,255,255,0.55)" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" letter-spacing="3">AUDITDOCS</text>
+  <!-- Main card -->
+  <rect x="52" y="48" width="1096" height="534" rx="20" fill="#080f1f" fill-opacity="0.90" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+
+  <!-- Top bar: logo + brand -->
+  <!-- Icon box -->
+  <rect x="88" y="84" width="44" height="44" rx="10" fill="#1e3a8a"/>
+  <rect x="98" y="94" width="24" height="30" rx="4" fill="#ffffff" fill-opacity="0.95"/>
+  <rect x="102" y="100" width="14" height="2.5" rx="1.2" fill="#2563eb"/>
+  <rect x="102" y="105" width="14" height="2.5" rx="1.2" fill="#2563eb"/>
+  <rect x="102" y="110" width="10" height="2.5" rx="1.2" fill="#2563eb"/>
+  <!-- Spark icon on top right of icon box -->
+  <path d="M122 87 L125 93 L131 96 L125 99 L122 105 L119 99 L113 96 L119 93 Z" fill="#38bdf8" fill-opacity="0.9"/>
+
+  <!-- Brand name -->
+  <text x="144" y="113" fill="rgba(255,255,255,0.90)" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" letter-spacing="0.5">AuditDocs</text>
+
+  <!-- Divider line -->
+  <line x1="88" y1="148" x2="1112" y2="148" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+
+  <!-- Category label -->
+  <text x="88" y="208" fill="#38bdf8" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" letter-spacing="3">AI DISCOVERABILITY AUDIT</text>
 
   <!-- Domain name -->
-  <text x="130" y="305" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="${fontSize}" font-weight="800" letter-spacing="-1">${domainText}</text>
+  <text x="88" y="295" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="${fontSize}" font-weight="800" letter-spacing="-0.5">${domainText}</text>
 
-  <!-- Subtitle -->
-  <text x="130" y="368" fill="#bfdbfe" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="500">AI Discoverability Score</text>
+  <!-- Description line -->
+  <text x="88" y="352" fill="rgba(148,163,184,0.9)" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400">Audited ${crawledPages} page${crawledPages === 1 ? "" : "s"} for AI discoverability</text>
 
-  <!-- Pages info -->
-  <text x="130" y="416" fill="rgba(203,213,225,0.65)" font-family="Inter, system-ui, sans-serif" font-size="21">${crawledPages} page${crawledPages === 1 ? "" : "s"} crawled</text>
-
-  <!-- Score ring background -->
-  <circle cx="985" cy="315" r="120" fill="rgba(0,0,0,0.30)" />
-  <!-- Score ring colored border -->
-  <circle cx="985" cy="315" r="110" fill="rgba(255,255,255,0.05)" stroke="${color}" stroke-width="4" />
+  <!-- Score section (right side) -->
+  <!-- Outer glow ring -->
+  <circle cx="960" cy="320" r="112" fill="url(#scoreGlow)" filter="url(#glow)"/>
+  <!-- Ring track -->
+  <circle cx="960" cy="320" r="100" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="6"/>
+  <!-- Colored ring -->
+  <circle cx="960" cy="320" r="100" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round"
+    stroke-dasharray="${Math.round(score * 6.28)},628" transform="rotate(-90 960 320)"/>
 
   <!-- Score number -->
-  <text x="985" y="348" fill="${color}" font-family="Inter, system-ui, sans-serif" font-size="92" font-weight="900" text-anchor="middle">${score}</text>
+  <text x="960" y="350" fill="${color}" font-family="system-ui, -apple-system, sans-serif" font-size="88" font-weight="900" text-anchor="middle">${score}</text>
+  <!-- out of 100 -->
+  <text x="960" y="382" fill="rgba(255,255,255,0.38)" font-family="system-ui, -apple-system, sans-serif" font-size="18" text-anchor="middle">out of 100</text>
 
-  <!-- /100 label -->
-  <text x="985" y="392" fill="rgba(255,255,255,0.45)" font-family="Inter, system-ui, sans-serif" font-size="22" text-anchor="middle" font-weight="400">out of 100</text>
+  <!-- Score label badge -->
+  <rect x="${960 - 52}" y="436" width="104" height="30" rx="15" fill="${color}" fill-opacity="0.18" stroke="${color}" stroke-opacity="0.4" stroke-width="1"/>
+  <text x="960" y="456" fill="${color}" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="700" text-anchor="middle" letter-spacing="1">${label.toUpperCase()}</text>
 
-  <!-- Score quality label (below circle) -->
-  <text x="985" y="468" fill="${color}" font-family="Inter, system-ui, sans-serif" font-size="19" text-anchor="middle" font-weight="600">${label}</text>
+  <!-- Footer divider -->
+  <line x1="88" y1="535" x2="1112" y2="535" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+
+  <!-- Footer left: site name -->
+  <text x="88" y="563" fill="rgba(255,255,255,0.30)" font-family="system-ui, -apple-system, sans-serif" font-size="15">auditdocs.io</text>
+
+  <!-- Footer right: tagline -->
+  <text x="1112" y="563" fill="rgba(255,255,255,0.30)" font-family="system-ui, -apple-system, sans-serif" font-size="15" text-anchor="end">AI Discoverability Audit</text>
 </svg>`;
 }
 
