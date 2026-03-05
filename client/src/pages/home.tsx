@@ -587,11 +587,11 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg overflow-hidden ring-1 ring-primary/20 shadow-sm">
-              <img src="/logo-mark.svg" alt="DAIDS" className="h-full w-full" />
+              <img src="/logo-mark.svg" alt="AuditDocs" className="h-full w-full" />
             </div>
             <div>
-              <h1 className="font-semibold">DAIDS</h1>
-              <p className="text-xs text-muted-foreground">Docs AI Discoverability Scorer</p>
+              <h1 className="font-semibold">AuditDocs</h1>
+              <p className="text-xs text-muted-foreground">AI Discoverability Scorer for Docs</p>
             </div>
           </div>
           <a 

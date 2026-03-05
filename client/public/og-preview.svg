@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="DAIDS social preview image">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="AuditDocs social preview image">
   <defs>
     <linearGradient id="bg" x1="140" y1="80" x2="1060" y2="550" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#1d4ed8" />
@@ -30,8 +30,8 @@
     <path d="M134 52L141 66L155 73L141 80L134 94L127 80L113 73L127 66Z" fill="#38bdf8" />
   </g>
 
-  <text x="420" y="250" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="74" font-weight="800" letter-spacing="2">DAIDS</text>
-  <text x="420" y="315" fill="#bfdbfe" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="600">Docs AI Discoverability Scorer</text>
+  <text x="420" y="250" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="74" font-weight="800" letter-spacing="2">AuditDocs</text>
+  <text x="420" y="315" fill="#bfdbfe" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="600">AI Discoverability Scorer for Docs</text>
   <text x="420" y="388" fill="#e2e8f0" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="500">Audit docs for AI indexing, retrieval, and agent usability.</text>
   <text x="420" y="436" fill="#cbd5e1" font-family="Inter, system-ui, sans-serif" font-size="24">Get prioritized fixes and a clear score out of 100.</text>
 </svg>
