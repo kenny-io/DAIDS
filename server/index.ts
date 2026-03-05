@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { warmOgAssets } from "./og";
 
 process.on("SIGHUP", () => { });
 process.on("SIGTERM", () => { process.exit(0); });
@@ -76,6 +77,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  warmOgAssets(); // kick off font + bg image loading in background
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

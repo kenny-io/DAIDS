@@ -1,5 +1,6 @@
 import { Resvg } from "@resvg/resvg-js";
 import fs from "fs";
+import https from "https";
 import path from "path";
 
 function escapeXml(str: string): string {
@@ -36,22 +37,60 @@ function truncateDomain(domain: string): string {
   return domain;
 }
 
-let _fontBuf: Buffer | null | undefined = undefined;
+const INTER_WOFF2_URL =
+  "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7SUc.woff2";
 
-function getFont(): Buffer | null {
-  if (_fontBuf !== undefined) return _fontBuf;
+let _fontPromise: Promise<Buffer | null> | null = null;
+
+async function loadFont(): Promise<Buffer | null> {
+  // 1. Try disk (prod: dist/inter.woff2, dev: server/inter.woff2)
   const candidates = [
-    path.join(__dirname, "inter.woff2"),                       // prod (dist/)
-    path.join(process.cwd(), "server", "inter.woff2"),         // dev fallback
+    path.join(__dirname, "inter.woff2"),
+    path.join(process.cwd(), "server", "inter.woff2"),
+    path.join(process.cwd(), "dist", "inter.woff2"),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) {
-      _fontBuf = fs.readFileSync(p);
-      return _fontBuf;
+      console.log("[og] font loaded from disk:", p);
+      return fs.readFileSync(p);
     }
   }
-  _fontBuf = null; // not found, resvg will use system fonts
-  return null;
+  console.log("[og] font not on disk, candidates tried:", candidates);
+  console.log("[og] downloading Inter from CDN...");
+
+  // 2. Download from Google CDN as fallback
+  try {
+    const buf = await new Promise<Buffer>((resolve, reject) => {
+      https.get(INTER_WOFF2_URL, (res) => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`font download returned ${res.statusCode}`));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        res.on("data", (d: Buffer) => chunks.push(d));
+        res.on("end", () => resolve(Buffer.concat(chunks)));
+        res.on("error", reject);
+      }).on("error", reject);
+    });
+    console.log("[og] font downloaded from CDN:", buf.length, "bytes");
+    // Persist next to the bundle for future requests
+    const savePath = candidates[0];
+    try {
+      fs.writeFileSync(savePath, buf);
+      console.log("[og] font cached to disk:", savePath);
+    } catch {
+      // Non-fatal — might lack write perms, continue with in-memory buf
+    }
+    return buf;
+  } catch (err) {
+    console.error("[og] font download failed, text will not render:", err);
+    return null;
+  }
+}
+
+function getFont(): Promise<Buffer | null> {
+  if (!_fontPromise) _fontPromise = loadFont();
+  return _fontPromise;
 }
 
 let _bgDataUri: string | undefined = undefined;
@@ -163,22 +202,29 @@ function buildAuditSvg(domain: string, score: number, crawledPages: number): str
 </svg>`;
 }
 
+/** Kick off font + bg image loading at server startup so the first OG request is fast. */
+export function warmOgAssets(): void {
+  getFont(); // starts the async font load/download
+  getBgDataUri(); // loads the background image synchronously
+}
+
 // Simple in-memory cache with 5-minute TTL
 const cache = new Map<string, { png: Buffer; at: number }>();
 const TTL_MS = 5 * 60 * 1000;
 
-export function generateAuditOgImage(
+export async function generateAuditOgImage(
   id: string,
   domain: string,
   score: number,
   crawledPages: number,
-): Buffer {
+): Promise<Buffer> {
   const cacheKey = `${id}:${score}:${domain}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.png;
 
   const svg = buildAuditSvg(domain, score, crawledPages);
-  const fontBuf = getFont();
+  const fontBuf = await getFont();
+  console.log("[og] rendering", domain, "score:", score, "font:", fontBuf ? `${fontBuf.length}b` : "none");
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: 1200 },
     font: fontBuf

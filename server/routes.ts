@@ -97,7 +97,7 @@ export async function registerRoutes(
       }
 
       const domain = getDomainFromUrl(result.rootUrl);
-      const png = generateAuditOgImage(id, domain, result.score, result.crawledPages);
+      const png = await generateAuditOgImage(id, domain, result.score, result.crawledPages);
 
       res.setHeader("Content-Type", "image/png");
       res.setHeader("Cache-Control", "public, max-age=300");
