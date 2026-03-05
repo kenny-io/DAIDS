@@ -6,9 +6,16 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        lg: "0.875rem",  /* 14px — Apple card radius */
+        md: "0.625rem",  /* 10px — Apple button/input radius */
+        sm: "0.375rem",  /* 6px  — Apple small element radius */
+      },
+      boxShadow: {
+        sm: "0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
+        DEFAULT: "0 2px 6px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05)",
+        md: "0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.05)",
+        lg: "0 8px 24px rgba(0,0,0,0.10), 0 16px 40px rgba(0,0,0,0.06)",
+        xl: "0 12px 32px rgba(0,0,0,0.12), 0 24px 48px rgba(0,0,0,0.08)",
       },
       colors: {
         // Flat / base colors (regular buttons)
