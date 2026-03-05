@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { runAudit, AuditConfigSchema } from "./audit";
 import { analyticsStore } from "./analytics";
 import { generateMarkdown, generatePDF } from "./export";
-import { generateAuditOgImage, escapeHtml } from "./og";
+import { escapeHtml } from "./og";
 import { z } from "zod";
 import type { ShowcaseSortBy, SortDirection } from "@shared/analytics-types";
 
@@ -62,7 +62,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Crawler interception: return custom meta tags for social previews on audit pages
+  // Crawler interception: return static OG meta tags for social previews on audit pages
   app.get("/audit/:id", async (req: Request, res: Response, next: NextFunction) => {
     const ua = req.headers["user-agent"] || "";
     if (!isSocialCrawler(ua)) return next();
@@ -76,34 +76,13 @@ export async function registerRoutes(
       const baseUrl =
         process.env.BASE_URL ||
         `${req.protocol}://${req.get("host") as string}`;
-      const ogImageUrl = `${baseUrl}/api/og/audit/${id}.png`;
+      const ogImageUrl = `${baseUrl}/og-image.png`;
       const title = `${domain} — ${result.score}/100 | AuditDocs`;
       const description = `AI discoverability audit for ${domain}. Score: ${result.score}/100 across ${result.crawledPages} pages crawled.`;
 
       res.type("html").send(buildCrawlerHtml(title, description, ogImageUrl));
     } catch {
       next();
-    }
-  });
-
-  // Dynamic OG image for audit results
-  app.get("/api/og/audit/:id.png", async (req: Request, res: Response) => {
-    try {
-      const id = req.params.id as string;
-      const result = await analyticsStore.getResultById(id);
-      if (!result) {
-        res.status(404).json({ error: true, message: "Audit result not found" });
-        return;
-      }
-
-      const domain = getDomainFromUrl(result.rootUrl);
-      const png = await generateAuditOgImage(id, domain, result.score, result.crawledPages);
-
-      res.setHeader("Content-Type", "image/png");
-      res.setHeader("Cache-Control", "public, max-age=300");
-      res.send(png);
-    } catch (error: any) {
-      res.status(500).json({ error: true, message: error.message || "Failed to generate OG image" });
     }
   });
 
