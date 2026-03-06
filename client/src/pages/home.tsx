@@ -13,12 +13,11 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
-  Globe,
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { ScoreGauge, getScoreLabel } from "@/components/audit-result";
+import { ScoreGauge, getScoreLabel, SiteFavicon } from "@/components/audit-result";
 import type { AuditResult, AuditRequest } from "@shared/audit-types";
 import type { AuditAnalyticsEntry, ShowcaseResponse } from "@shared/analytics-types";
 
@@ -49,7 +48,7 @@ function ShowcaseCard({ entry }: { entry: AuditAnalyticsEntry }) {
           <ScoreGauge score={entry.score} size="small" />
           <div className="min-w-0 flex-1">
             <div className="font-semibold text-sm inline-flex items-center gap-1.5 truncate max-w-full">
-              <Globe className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+              <SiteFavicon domain={entry.domain} size="sm" />
               <span className="truncate">{entry.domain}</span>
             </div>
             <div className="text-xs text-muted-foreground truncate mt-0.5">{entry.url}</div>

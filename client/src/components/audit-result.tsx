@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Globe } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,20 @@ import {
 } from "lucide-react";
 import type { AuditResult, Finding, CategoryResult } from "@shared/audit-types";
 import { useToast } from "@/hooks/use-toast";
+
+export function SiteFavicon({ domain, size = "md" }: { domain: string; size?: "sm" | "md" }) {
+  const [failed, setFailed] = useState(false);
+  const px = size === "sm" ? "w-3.5 h-3.5" : "w-5 h-5";
+  if (failed) return <Globe className={`${px} shrink-0 text-muted-foreground`} />;
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?sz=32&domain_url=${encodeURIComponent(domain)}`}
+      alt=""
+      className={`${px} shrink-0 rounded-sm object-contain`}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 const categoryIcons: Record<string, typeof Target> = {
   "Agent discovery readiness": Target,
@@ -268,7 +283,10 @@ export function AuditResultView({ result }: { result: AuditResult }) {
             <div className="flex-1 w-full">
               <div className="flex items-start justify-between mb-5">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight mb-1">Audit Complete</h2>
+                  <div className="flex items-center gap-2 mb-1">
+                    <SiteFavicon domain={result.rootUrl} size="md" />
+                    <h2 className="text-2xl font-bold tracking-tight">Audit Complete</h2>
+                  </div>
                   <a
                     href={result.rootUrl}
                     target="_blank"
