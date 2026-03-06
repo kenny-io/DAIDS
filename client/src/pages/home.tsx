@@ -15,7 +15,6 @@ import {
   ChevronUp,
   Globe,
   ArrowUpDown,
-  BarChart3,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
