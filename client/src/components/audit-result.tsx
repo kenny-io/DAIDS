@@ -48,6 +48,8 @@ export function ScoreGauge({ score, size = "large" }: { score: number; size?: "l
   const textSize = size === "large" ? "text-4xl" : "text-base";
   const strokeWidth = size === "large" ? 7 : 4;
 
+  const minWidth = dimensions.concat // we need to use minWidth later to calculate the dimensions.
+
   return (
     <div className={`relative ${dimensions} shrink-0`} data-testid="score-gauge">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -71,6 +73,8 @@ export function ScoreGauge({ score, size = "large" }: { score: number; size?: "l
     </div>
   );
 }
+
+
 
 export function FindingRow({ finding }: { finding: Finding }) {
   const [showUrls, setShowUrls] = useState(false);

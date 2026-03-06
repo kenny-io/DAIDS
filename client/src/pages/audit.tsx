@@ -64,13 +64,6 @@ export default function AuditPage() {
           </Link>
           <div className="flex items-center gap-2">
             <ShareButton />
-            <a
-              href="/analytics"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Analytics
-            </a>
           </div>
         </div>
       </div>
@@ -114,15 +107,6 @@ export default function AuditPage() {
         {/* Result */}
         {result && !isLoading && (
           <>
-            {/* Shareable URL banner */}
-            <div className="flex items-center justify-between mb-6 p-4 rounded-2xl bg-card border border-border/60 shadow-sm">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wide mb-0.5">Shareable audit link</p>
-                <p className="text-sm font-mono text-foreground/80 truncate">{window.location.href}</p>
-              </div>
-              <ShareButton />
-            </div>
-
             <AuditResultView result={result} />
 
             {/* CTA */}

@@ -239,14 +239,6 @@ export default function Home() {
             </div>
             <span className="font-semibold text-[15px] tracking-tight">AuditDocs</span>
           </div>
-          <a
-            href="/analytics"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5"
-            data-testid="link-analytics"
-          >
-            <BarChart3 className="w-4 h-4" />
-            Analytics
-          </a>
         </div>
       </div>
 
