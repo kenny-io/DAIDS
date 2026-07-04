@@ -277,6 +277,14 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
         "Rich schema types detected (TechArticle, HowTo, or similar) for enhanced AI understanding."
       )
     );
+  } else {
+    // No JSON-LD at all — rich types check is not applicable, already covered by the JSON-LD finding above
+    findings.push(
+      createFinding(
+        "na",
+        "Rich schema type check skipped — add JSON-LD first to unlock richer schema types."
+      )
+    );
   }
 
   const pagesWithOpenAPI = validPages.filter((p) => p.hasOpenAPILink);
@@ -292,6 +300,13 @@ function scoreStructuredDataAndMachineReadability(pages: ExtractedPage[]): Categ
           "API documentation detected but no OpenAPI/Swagger spec link found. Machine-readable API specs are critical for AI agents.",
           validPages.filter((p) => /api/i.test(p.url)).map((p) => p.url),
           "Your documentation includes API-related content (endpoints, requests, responses), but no link to an OpenAPI or Swagger specification was found. OpenAPI specs are the gold standard for machine-readable API documentation — AI agents can parse them to understand every endpoint, parameter, request body, and response format without scraping HTML. Host your OpenAPI spec as a JSON or YAML file and link to it from your API docs. Tools like Swagger UI, Redoc, or Stoplight can generate documentation from the spec automatically."
+        )
+      );
+    } else {
+      findings.push(
+        createFinding(
+          "na",
+          "No API documentation detected — OpenAPI/Swagger spec not required."
         )
       );
     }
@@ -391,7 +406,14 @@ function scoreContentSelfContainment(
     );
   }
 
-  if (shortChunks.length <= chunks.length * 0.3 && longChunks.length <= chunks.length * 0.2 && chunks.length > 0) {
+  if (chunks.length === 0) {
+    findings.push(
+      createFinding(
+        "na",
+        "Chunk size analysis skipped — no content could be extracted from pages."
+      )
+    );
+  } else if (shortChunks.length <= chunks.length * 0.3 && longChunks.length <= chunks.length * 0.2) {
     findings.push(
       createFinding(
         "pass",
@@ -584,8 +606,8 @@ export function scoreAll(
     }))
   );
 
-  const severityOrder: Record<FindingSeverity, number> = { high: 0, med: 1, low: 2, pass: 3 };
-  const issueFindings = allFindings.filter(f => f.severity !== "pass");
+  const severityOrder: Record<FindingSeverity, number> = { high: 0, med: 1, low: 2, pass: 3, na: 4 };
+  const issueFindings = allFindings.filter(f => f.severity !== "pass" && f.severity !== "na");
   const sortedFindings = issueFindings.sort(
     (a, b) => severityOrder[a.severity] - severityOrder[b.severity]
   );

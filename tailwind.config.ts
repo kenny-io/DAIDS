@@ -6,16 +6,19 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: "0.875rem",  /* 14px — Apple card radius */
-        md: "0.625rem",  /* 10px — Apple button/input radius */
-        sm: "0.375rem",  /* 6px  — Apple small element radius */
+        xl: "0.75rem",   /* 12px — large cards / panels */
+        lg: "0.625rem",  /* 10px — card / dialog radius */
+        md: "0.5rem",    /* 8px  — button / input radius */
+        sm: "0.375rem",  /* 6px  — badges / small elements */
       },
       boxShadow: {
-        sm: "0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
-        DEFAULT: "0 2px 6px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05)",
-        md: "0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.05)",
-        lg: "0 8px 24px rgba(0,0,0,0.10), 0 16px 40px rgba(0,0,0,0.06)",
-        xl: "0 12px 32px rgba(0,0,0,0.12), 0 24px 48px rgba(0,0,0,0.08)",
+        xs: "var(--shadow-xs)",
+        sm: "var(--shadow-sm)",
+        DEFAULT: "var(--shadow)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        xl: "var(--shadow-xl)",
+        "2xl": "var(--shadow-2xl)",
       },
       colors: {
         // Flat / base colors (regular buttons)
@@ -59,6 +62,12 @@ export default {
           border: "var(--destructive-border)",
         },
         ring: "hsl(var(--ring) / <alpha-value>)",
+        panel: {
+          DEFAULT: "hsl(var(--panel) / <alpha-value>)",
+          foreground: "hsl(var(--panel-foreground) / <alpha-value>)",
+        },
+        success: "hsl(var(--success) / <alpha-value>)",
+        warning: "hsl(var(--warning) / <alpha-value>)",
         chart: {
           "1": "hsl(var(--chart-1) / <alpha-value>)",
           "2": "hsl(var(--chart-2) / <alpha-value>)",

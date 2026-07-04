@@ -155,7 +155,12 @@ export function generatePDF(result: AuditResult): Promise<Buffer> {
       if (cat.findings.length > 0) {
         doc.fontSize(9).fillColor("#666666");
         for (const finding of cat.findings.slice(0, 2)) {
-          const sevLabel = finding.severity === "high" ? "[HIGH]" : finding.severity === "med" ? "[MED]" : "[LOW]";
+          const sevLabel =
+            finding.severity === "high" ? "[HIGH]"
+            : finding.severity === "med" ? "[MED]"
+            : finding.severity === "low" ? "[LOW]"
+            : finding.severity === "na" ? "[N/A]"
+            : "[PASS]";
           doc.text(`  ${sevLabel} ${finding.message.substring(0, 80)}${finding.message.length > 80 ? "..." : ""}`);
         }
         if (cat.findings.length > 2) {

@@ -3,6 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <script>
+      // Follow the OS colour scheme (no in-app theme toggle). Runs before paint
+      // to avoid a flash; keeps in sync if the system preference changes.
+      (function () {
+        var mq = window.matchMedia("(prefers-color-scheme: dark)");
+        var apply = function () {
+          document.documentElement.classList.toggle("dark", mq.matches);
+        };
+        apply();
+        mq.addEventListener("change", apply);
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>AuditDocs | AI Discoverability Scorer for Docs</title>
     <meta name="description" content="AuditDocs audits documentation for AI discoverability, retrieval readiness, and agent usability, then returns a score out of 100 with prioritized fixes." />

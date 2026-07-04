@@ -86,7 +86,7 @@ export interface ContentChunk {
   headingContext: string | null;
 }
 
-export type FindingSeverity = "pass" | "low" | "med" | "high";
+export type FindingSeverity = "pass" | "na" | "low" | "med" | "high";
 
 export interface Finding {
   severity: FindingSeverity;

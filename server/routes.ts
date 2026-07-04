@@ -7,6 +7,24 @@ import { escapeHtml } from "./og";
 import { z } from "zod";
 import type { ShowcaseSortBy, SortDirection } from "@shared/analytics-types";
 
+// Fail-closed auth for the private analytics endpoints. The dashboard sends the
+// password as an `x-analytics-key` header; enforcement lives here, not on the
+// client. If ANALYTICS_PASSWORD is unset (e.g. not configured on Railway),
+// access is denied rather than granted.
+function requireAnalyticsAuth(req: Request, res: Response, next: NextFunction) {
+  const expected = process.env.ANALYTICS_PASSWORD;
+  if (!expected) {
+    return res.status(500).json({
+      error: true,
+      message: "Analytics gate is not configured on the server.",
+    });
+  }
+  if ((req.header("x-analytics-key") || "") !== expected) {
+    return res.status(401).json({ error: true, message: "Unauthorized." });
+  }
+  next();
+}
+
 const SOCIAL_CRAWLERS = [
   "twitterbot", "linkedinbot", "slackbot", "facebookexternalhit",
   "whatsapp", "discordbot", "telegrambot", "googlebot", "bingbot",
@@ -171,7 +189,46 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/analytics", async (_req: Request, res: Response) => {
+  // Password gate for the /analytics dashboard. Validated server-side against
+  // ANALYTICS_PASSWORD so the secret never ships to the client. Fails closed:
+  // if the env var is unset (e.g. not configured on Railway), access is denied.
+  app.post("/api/analytics/verify", (req: Request, res: Response) => {
+    const expected = process.env.ANALYTICS_PASSWORD;
+    if (!expected) {
+      return res.status(500).json({
+        error: true,
+        message: "Analytics gate is not configured on the server.",
+      });
+    }
+    const provided = typeof req.body?.password === "string" ? req.body.password : "";
+    if (provided !== expected) {
+      return res.status(401).json({ error: true, message: "Incorrect password." });
+    }
+    res.json({ ok: true });
+  });
+
+  // Minimal aggregate stats for the PUBLIC home page. Deliberately excludes the
+  // sensitive breakdown (recent audits, per-domain detail, score distribution)
+  // that the gated /api/analytics summary exposes.
+  app.get("/api/public-stats", async (_req: Request, res: Response) => {
+    try {
+      const summary = await analyticsStore.getSummary();
+      const pageviews = await analyticsStore.getPageviewCount();
+      res.json({
+        totalAudits: summary.totalAudits,
+        avgScore: summary.avgScore,
+        uniqueDomains: summary.topDomains.length,
+        pageviews,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        error: true,
+        message: error.message || "Failed to fetch stats",
+      });
+    }
+  });
+
+  app.get("/api/analytics", requireAnalyticsAuth, async (_req: Request, res: Response) => {
     try {
       const summary = await analyticsStore.getSummary();
       res.json(summary);
@@ -183,7 +240,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/analytics/all", async (req: Request, res: Response) => {
+  app.get("/api/analytics/all", requireAnalyticsAuth, async (req: Request, res: Response) => {
     try {
       const sortBy = req.query.sortBy === "score" ? "score" : "createdAt";
       const sortDir = req.query.sortDir === "asc" ? "asc" : "desc";
@@ -247,7 +304,7 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  app.get("/api/analytics/pageviews", async (_req: Request, res: Response) => {
+  app.get("/api/analytics/pageviews", requireAnalyticsAuth, async (_req: Request, res: Response) => {
     try {
       const count = await analyticsStore.getPageviewCount();
       res.json({ count });

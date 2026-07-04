@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +15,11 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  FileSearch,
+  ArrowRight,
 } from "lucide-react";
-import { ScoreGauge, getScoreLabel, SiteFavicon } from "@/components/audit-result";
+import { TopNav, PageContainer, SectionLabel } from "@/components/app-chrome";
+import { ScoreGauge, ScoreBadge, SiteFavicon } from "@/components/audit-result";
 import type { AuditResult, AuditRequest } from "@shared/audit-types";
 import type { AuditAnalyticsEntry, ShowcaseResponse } from "@shared/analytics-types";
 
@@ -33,33 +35,87 @@ function getTimeAgo(date: Date): string {
   return date.toLocaleDateString();
 }
 
-function ShowcaseCard({ entry }: { entry: AuditAnalyticsEntry }) {
-  const [, navigate] = useLocation();
-  const timeAgo = getTimeAgo(new Date(entry.createdAt));
+/* --- Platform activity strip -------------------------------------------- */
+function StatChip({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex-1 min-w-[7rem] px-4 py-3">
+      <div className="text-xl font-semibold font-mono tabular-nums leading-none">{value}</div>
+      <div className="text-[11px] text-muted-foreground mt-1.5 font-medium">{label}</div>
+    </div>
+  );
+}
+
+interface PublicStats {
+  totalAudits: number;
+  avgScore: number;
+  uniqueDomains: number;
+  pageviews: number;
+}
+
+function ActivityBar() {
+  const { data } = useQuery<PublicStats>({ queryKey: ["/api/public-stats"] });
+  if (!data || data.totalAudits === 0) return null;
 
   return (
-    <Card
-      className="cursor-pointer bg-card shadow-sm border-border/60 hover:shadow-md transition-all duration-200 rounded-2xl"
-      data-testid={`showcase-card-${entry.id}`}
+    <div className="rounded-xl border border-border bg-card shadow-sm divide-x divide-border flex overflow-x-auto">
+      <StatChip label="Total audits" value={data.totalAudits.toLocaleString()} />
+      <StatChip label="Average score" value={data.avgScore} />
+      <StatChip label="Unique domains" value={data.uniqueDomains} />
+      <StatChip label="Page views" value={data.pageviews.toLocaleString()} />
+    </div>
+  );
+}
+
+/* --- Recent audits: data table (desktop) + cards (mobile) --------------- */
+function ShowcaseRow({ entry }: { entry: AuditAnalyticsEntry }) {
+  const [, navigate] = useLocation();
+  return (
+    <tr
+      className="group cursor-pointer border-t border-border hover:bg-muted/40 transition-colors"
       onClick={() => navigate(`/audit/${entry.id}`)}
+      data-testid={`showcase-row-${entry.id}`}
     >
-      <CardContent className="p-5 space-y-3">
-        <div className="flex items-center gap-3">
-          <ScoreGauge score={entry.score} size="small" />
-          <div className="min-w-0 flex-1">
-            <div className="font-semibold text-sm inline-flex items-center gap-1.5 truncate max-w-full">
-              <SiteFavicon domain={entry.domain} size="sm" />
-              <span className="truncate">{entry.domain}</span>
-            </div>
-            <div className="text-xs text-muted-foreground truncate mt-0.5">{entry.url}</div>
+      <td className="py-3 pl-4 pr-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <SiteFavicon domain={entry.domain} size="md" />
+          <div className="min-w-0">
+            <div className="font-medium text-[13px] truncate">{entry.domain}</div>
+            <div className="text-[11px] text-muted-foreground truncate font-mono">{entry.url}</div>
           </div>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{entry.crawledPages} pages crawled</span>
-          <span className="text-xs text-muted-foreground">{timeAgo}</span>
+      </td>
+      <td className="py-3 px-3 w-px"><ScoreBadge score={entry.score} /></td>
+      <td className="py-3 px-3 text-[13px] text-muted-foreground tabular-nums text-right whitespace-nowrap">{entry.crawledPages}</td>
+      <td className="py-3 px-3 text-[13px] text-muted-foreground tabular-nums text-right whitespace-nowrap">{getTimeAgo(new Date(entry.createdAt))}</td>
+      <td className="py-3 pr-4 pl-1 w-px">
+        <ArrowRight className="w-4 h-4 text-muted-foreground/0 group-hover:text-muted-foreground transition-colors" />
+      </td>
+    </tr>
+  );
+}
+
+function ShowcaseCard({ entry }: { entry: AuditAnalyticsEntry }) {
+  const [, navigate] = useLocation();
+  return (
+    <button
+      className="w-full text-left rounded-lg border border-border bg-card shadow-xs p-3.5 active:bg-muted/50 transition-colors"
+      onClick={() => navigate(`/audit/${entry.id}`)}
+      data-testid={`showcase-card-${entry.id}`}
+    >
+      <div className="flex items-center gap-3">
+        <ScoreGauge score={entry.score} size="small" />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-[13px] inline-flex items-center gap-1.5 truncate max-w-full">
+            <SiteFavicon domain={entry.domain} size="sm" />
+            <span className="truncate">{entry.domain}</span>
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate mt-0.5 font-mono">{entry.url}</div>
+          <div className="text-[11px] text-muted-foreground/70 mt-1 tabular-nums">
+            {entry.crawledPages} pages · {getTimeAgo(new Date(entry.createdAt))}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </button>
   );
 }
 
@@ -81,19 +137,16 @@ function Showcase() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {[...Array(3)].map((_, i) => (
-          <Card key={i} className="animate-pulse rounded-2xl shadow-sm border-border/60">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-muted" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-muted rounded-lg w-48" />
-                  <div className="h-3 bg-muted rounded-lg w-32" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3 p-4 border-t border-border first:border-t-0 animate-pulse">
+            <div className="w-8 h-8 rounded-md bg-muted" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 bg-muted rounded w-48" />
+              <div className="h-2.5 bg-muted rounded w-32" />
+            </div>
+            <div className="h-6 w-10 bg-muted rounded-md" />
+          </div>
         ))}
       </div>
     );
@@ -101,22 +154,17 @@ function Showcase() {
 
   if (!data || data.items.length === 0) {
     return (
-      <Card className="text-center py-12 rounded-2xl shadow-sm border-border/60" data-testid="showcase-empty">
-        <CardContent>
-          <Globe className="w-8 h-8 mx-auto mb-3 text-muted-foreground/50" />
-          <p className="text-sm font-medium text-muted-foreground">No audits yet</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Run your first audit above to get started.</p>
-        </CardContent>
-      </Card>
+      <div className="text-center py-16 rounded-xl border border-border bg-card" data-testid="showcase-empty">
+        <FileSearch className="w-8 h-8 mx-auto mb-3 text-muted-foreground/40" />
+        <p className="text-sm font-medium text-muted-foreground">No audits yet</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">Run your first audit above to get started.</p>
+      </div>
     );
   }
 
   const sortedItems = [...data.items].sort((a, b) => {
-    if (sortBy === "score") {
-      if (a.score !== b.score) return sortDir === "asc" ? a.score - b.score : b.score - a.score;
-      const aTime = new Date(a.createdAt).getTime();
-      const bTime = new Date(b.createdAt).getTime();
-      return sortDir === "asc" ? aTime - bTime : bTime - aTime;
+    if (sortBy === "score" && a.score !== b.score) {
+      return sortDir === "asc" ? a.score - b.score : b.score - a.score;
     }
     const aTime = new Date(a.createdAt).getTime();
     const bTime = new Date(b.createdAt).getTime();
@@ -124,12 +172,12 @@ function Showcase() {
   });
 
   return (
-    <div className="space-y-5" data-testid="showcase-section">
+    <div className="space-y-4" data-testid="showcase-section">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {data.items.length} of {data.pagination.totalItems} audits
+        <p className="text-xs text-muted-foreground tabular-nums">
+          Showing <span className="text-foreground font-medium">{data.items.length}</span> of {data.pagination.totalItems} audits
         </p>
-        <div className="w-full sm:w-56" data-testid="showcase-sort-select">
+        <div className="w-full sm:w-52" data-testid="showcase-sort-select">
           <Select
             value={`${sortBy}:${sortDir}`}
             onValueChange={(value) => {
@@ -139,13 +187,13 @@ function Showcase() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="h-9 rounded-xl border-border/60 bg-card shadow-sm text-sm">
+            <SelectTrigger className="h-9 text-[13px]">
               <div className="inline-flex items-center gap-2">
                 <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
                 <SelectValue placeholder="Sort audits" />
               </div>
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
+            <SelectContent>
               <SelectItem value="createdAt:desc">Newest first</SelectItem>
               <SelectItem value="createdAt:asc">Oldest first</SelectItem>
               <SelectItem value="score:desc">Score: high to low</SelectItem>
@@ -155,33 +203,54 @@ function Showcase() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {/* Desktop table */}
+      <div className="hidden md:block rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left">
+              <th className="py-2.5 pl-4 pr-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 font-medium">Site</th>
+              <th className="py-2.5 px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 font-medium">Score</th>
+              <th className="py-2.5 px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 font-medium text-right">Pages</th>
+              <th className="py-2.5 px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 font-medium text-right">Audited</th>
+              <th className="w-px" />
+            </tr>
+          </thead>
+          <tbody>
+            {sortedItems.map((entry) => (
+              <ShowcaseRow key={entry.id} entry={entry} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="grid md:hidden grid-cols-1 gap-2.5">
         {sortedItems.map((entry) => (
           <ShowcaseCard key={entry.id} entry={entry} />
         ))}
       </div>
 
       {data.pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2" data-testid="showcase-pagination">
+        <div className="flex items-center justify-center gap-2 pt-1" data-testid="showcase-pagination">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage(p => p - 1)}
+            onClick={() => setPage((p) => p - 1)}
             disabled={!data.pagination.hasPrev}
-            className="rounded-xl border-border/60 shadow-sm"
+            className="h-8 w-8 p-0"
             data-testid="button-prev-page"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <span className="text-sm text-muted-foreground px-3 tabular-nums">
-            {data.pagination.page} / {data.pagination.totalPages}
+          <span className="text-xs text-muted-foreground px-2 tabular-nums">
+            Page {data.pagination.page} of {data.pagination.totalPages}
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage(p => p + 1)}
+            onClick={() => setPage((p) => p + 1)}
             disabled={!data.pagination.hasNext}
-            className="rounded-xl border-border/60 shadow-sm"
+            className="h-8 w-8 p-0"
             data-testid="button-next-page"
           >
             <ChevronRight className="w-4 h-4" />
@@ -203,24 +272,22 @@ export default function Home() {
   const auditMutation = useMutation({
     mutationFn: async (request: AuditRequest) => {
       const response = await apiRequest("POST", "/api/audit", request);
-      return await response.json() as AuditResult;
+      return (await response.json()) as AuditResult;
     },
     onSuccess: (data) => {
       setUrl("");
       queryClient.invalidateQueries({ queryKey: ["/api/showcase"] });
-      if (data.id) {
-        navigate(`/audit/${data.id}`);
-      }
+      if (data.id) navigate(`/audit/${data.id}`);
     },
     onError: (error: Error) => {
-      toast({ title: "Audit Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Audit failed", description: error.message, variant: "destructive" });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) {
-      toast({ title: "URL Required", description: "Please enter a documentation URL to audit", variant: "destructive" });
+      toast({ title: "URL required", description: "Please enter a documentation URL to audit", variant: "destructive" });
       return;
     }
     auditMutation.mutate({ url: url.trim(), maxPages: parseInt(maxPages, 10) || 50 });
@@ -228,120 +295,115 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar */}
-      <div className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl overflow-hidden shadow-sm">
-              <img src="/logo-mark.svg" alt="AuditDocs" className="h-full w-full" />
+      <TopNav suffix="AI readiness" />
+
+      {/* Hero */}
+      <div className="relative border-b border-border overflow-hidden">
+        <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,black,transparent)]" />
+        <PageContainer className="relative py-16 sm:py-20">
+          <div className="max-w-2xl mx-auto text-center" data-testid="audit-intro">
+            <h1 className="text-3xl sm:text-[2.75rem] font-semibold tracking-tight leading-[1.05] mb-4 text-balance">
+              Is your documentation
+              <br className="hidden sm:block" /> AI&#8209;ready?
+            </h1>
+            <p className="text-muted-foreground text-[15px] sm:text-base max-w-xl mx-auto leading-relaxed">
+              Score your docs for AI discoverability, retrieval readiness, and agent usability.
+              Get a prioritized list of fixes and a score out of 100.
+            </p>
+
+            {/* Command bar */}
+            <form onSubmit={handleSubmit} className="mt-8 max-w-xl mx-auto">
+              <div className="flex gap-1.5 p-1.5 bg-card rounded-xl border border-border shadow-md focus-within:ring-2 focus-within:ring-ring/40 transition-shadow">
+                <div className="flex items-center pl-2.5 text-muted-foreground">
+                  <Search className="w-4 h-4" />
+                </div>
+                <Input
+                  type="url"
+                  placeholder="https://docs.example.com"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  disabled={auditMutation.isPending}
+                  className="flex-1 min-w-0 h-10 border-0 bg-transparent text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 px-1 placeholder:text-muted-foreground/50 shadow-none"
+                  data-testid="input-url"
+                />
+                <Button type="submit" disabled={auditMutation.isPending} className="h-10 px-5 shrink-0 gap-2" data-testid="button-start-audit">
+                  {auditMutation.isPending ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin opacity-70" />
+                      Auditing…
+                    </>
+                  ) : (
+                    <>
+                      Run audit
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+                <div className="flex justify-center mt-2.5">
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" data-testid="button-advanced-options">
+                      Advanced options {showAdvanced ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent className="pt-2">
+                  <div className="flex justify-center">
+                    <div className="w-40 text-left">
+                      <Label htmlFor="maxPages" className="text-[11px] text-muted-foreground font-medium">Max pages to crawl</Label>
+                      <Input
+                        id="maxPages"
+                        type="number"
+                        min="1"
+                        max="500"
+                        value={maxPages}
+                        onChange={(e) => setMaxPages(e.target.value)}
+                        disabled={auditMutation.isPending}
+                        className="h-9 mt-1 tabular-nums"
+                        data-testid="input-max-pages"
+                      />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </form>
+
+            {/* Signal tags */}
+            <div className="flex flex-wrap justify-center gap-1.5 mt-8">
+              {["Agent discovery", "Structure & chunking", "Retrieval quality", "Developer usability", "Trust signals"].map((tag) => (
+                <span key={tag} className="px-2.5 py-1 rounded-md bg-card border border-border text-muted-foreground text-[11px] font-medium">
+                  {tag}
+                </span>
+              ))}
             </div>
-            <span className="font-semibold text-[15px] tracking-tight">AuditDocs</span>
           </div>
-        </div>
+        </PageContainer>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-14">
-        {/* Hero */}
-        <div className="text-center mb-10" data-testid="audit-intro">
-          <h2 className="text-4xl font-bold tracking-tight mb-4">
-            Is your documentation AI-ready?
-          </h2>
-          <p className="text-muted-foreground text-[17px] max-w-xl mx-auto leading-relaxed mb-6">
-            Score your docs for AI discoverability, retrieval readiness, and agent usability.
-            Get a prioritized list of fixes and a score out of 100.
-          </p>
-          <div className="flex flex-wrap justify-center gap-2 mb-4">
-            {["Agent discovery", "Structure & chunking", "Retrieval quality", "Developer usability", "Trust signals"].map(tag => (
-              <span key={tag} className="px-3 py-1 rounded-full bg-muted border border-border/60 text-muted-foreground text-xs font-medium">
-                {tag}
-              </span>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground/60" data-testid="text-fresh-runs-note">
-            Every audit is live — results are never cached.
-          </p>
-        </div>
-
-        {/* Audit form */}
-        <div className="mb-10" data-testid="card-audit-form">
-          <form onSubmit={handleSubmit}>
-            <div className="flex gap-2 p-1.5 bg-card rounded-2xl border border-border/60 shadow-sm">
-              <Input
-                type="url"
-                placeholder="https://docs.example.com"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                disabled={auditMutation.isPending}
-                className="flex-1 h-11 border-0 bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 px-3 placeholder:text-muted-foreground/50"
-                data-testid="input-url"
-              />
-              <Button
-                type="submit"
-                disabled={auditMutation.isPending}
-                className="h-11 px-6 rounded-xl shrink-0"
-                data-testid="button-start-audit"
-              >
-                {auditMutation.isPending ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2 opacity-70" />
-                    Auditing…
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4 mr-2" />
-                    Analyze
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-              <div className="flex justify-end mt-2">
-                <CollapsibleTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" data-testid="button-advanced-options">
-                    Advanced options {showAdvanced ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-              <CollapsibleContent className="pt-3">
-                <div className="flex gap-4 items-end">
-                  <div className="w-32">
-                    <Label htmlFor="maxPages" className="text-xs text-muted-foreground font-medium">Max Pages</Label>
-                    <Input
-                      id="maxPages"
-                      type="number"
-                      min="1"
-                      max="500"
-                      value={maxPages}
-                      onChange={(e) => setMaxPages(e.target.value)}
-                      disabled={auditMutation.isPending}
-                      className="h-9 mt-1 rounded-xl border-border/60 bg-card shadow-sm"
-                      data-testid="input-max-pages"
-                    />
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </form>
-        </div>
-
-        {/* Loading */}
-        {auditMutation.isPending && (
-          <div className="py-20 text-center mb-10">
+      <PageContainer className="py-10">
+        {auditMutation.isPending ? (
+          <div className="py-20 text-center">
             <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin mx-auto mb-5" />
             <p className="font-medium text-foreground/80">Crawling and analyzing…</p>
-            <p className="text-sm text-muted-foreground mt-1.5">This may take up to a minute</p>
+            <p className="text-sm text-muted-foreground mt-1.5">This may take up to a minute.</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <ActivityBar />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <SectionLabel>Showcase</SectionLabel>
+                  <h2 className="text-lg font-semibold tracking-tight mt-1">Recent audits</h2>
+                </div>
+              </div>
+              <Showcase />
+            </div>
           </div>
         )}
-
-        {/* Recent Audits showcase */}
-        {!auditMutation.isPending && (
-          <div className="mt-4 space-y-5">
-            <h2 className="text-xl font-bold tracking-tight">Recent Audits</h2>
-            <Showcase />
-          </div>
-        )}
-      </div>
+      </PageContainer>
     </div>
   );
 }

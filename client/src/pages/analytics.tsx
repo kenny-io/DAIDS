@@ -1,37 +1,22 @@
+import { useEffect, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Globe, Clock, ArrowLeft, Eye } from "lucide-react";
-import { Link } from "wouter";
+import { BarChart3, TrendingUp, Globe, Clock, Eye, Lock } from "lucide-react";
+import { TopNav, PageContainer, SectionLabel } from "@/components/app-chrome";
+import { ScoreBadge } from "@/components/audit-result";
 import type { AnalyticsSummary } from "@shared/analytics-types";
-
-function ScorePill({ score }: { score: number }) {
-  const color =
-    score >= 80 ? "bg-emerald-500/10 text-emerald-600 border-emerald-200/60 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40"
-    : score >= 50 ? "bg-amber-500/10 text-amber-600 border-amber-200/60 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40"
-    : "bg-red-500/10 text-red-500 border-red-200/60 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/40";
-  return (
-    <span className={`inline-flex items-center justify-center w-10 h-6 rounded-lg text-xs font-semibold border tabular-nums ${color}`}>
-      {score}
-    </span>
-  );
-}
 
 function StatCard({ icon: Icon, label, value, subtext }: { icon: typeof TrendingUp; label: string; value: string | number; subtext?: string }) {
   return (
-    <Card className="rounded-2xl shadow-sm border-border/60 bg-card">
-      <CardContent className="pt-6 pb-5">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-primary/8 dark:bg-primary/10">
-            <Icon className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <div className="text-3xl font-bold tabular-nums tracking-tight">{value}</div>
-            <div className="text-sm text-muted-foreground font-medium mt-0.5">{label}</div>
-            {subtext && <div className="text-xs text-muted-foreground/70 mt-0.5">{subtext}</div>}
-          </div>
+    <div className="rounded-lg border border-border bg-card shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 font-medium">{label}</span>
+        <div className="flex items-center justify-center w-7 h-7 rounded-md bg-muted border border-border text-muted-foreground">
+          <Icon className="w-3.5 h-3.5" />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="text-2xl font-semibold font-mono tabular-nums tracking-tight leading-none">{value}</div>
+      {subtext && <div className="text-[11px] text-muted-foreground/70 mt-1.5">{subtext}</div>}
+    </div>
   );
 }
 
@@ -49,7 +34,7 @@ function ScoreDistributionBar({ distribution }: { distribution: Record<string, n
 
   return (
     <div className="space-y-4">
-      <div className="flex h-5 rounded-xl overflow-hidden gap-0.5">
+      <div className="flex h-6 rounded-md overflow-hidden gap-0.5">
         {segments.map((seg) => {
           const count = distribution[seg.key] || 0;
           const pct = (count / total) * 100;
@@ -57,20 +42,21 @@ function ScoreDistributionBar({ distribution }: { distribution: Record<string, n
           return (
             <div
               key={seg.key}
-              className={`${seg.color} flex items-center justify-center text-xs font-semibold text-white rounded-sm first:rounded-l-xl last:rounded-r-xl`}
+              className={`${seg.color} flex items-center justify-center text-[11px] font-semibold text-white tabular-nums first:rounded-l-md last:rounded-r-md`}
               style={{ width: `${pct}%` }}
               title={`${seg.label}: ${count}`}
             >
-              {pct > 10 && count}
+              {pct > 9 && count}
             </div>
           );
         })}
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
         {segments.map((seg) => (
-          <div key={seg.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className={`w-2 h-2 rounded-full ${seg.color}`} />
+          <div key={seg.key} className="flex items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums">
+            <span className={`w-2 h-2 rounded-sm ${seg.color}`} />
             {seg.label}
+            <span className="text-muted-foreground/50">· {distribution[seg.key] || 0}</span>
           </div>
         ))}
       </div>
@@ -78,145 +64,215 @@ function ScoreDistributionBar({ distribution }: { distribution: Record<string, n
   );
 }
 
-export default function Analytics() {
+function Panel({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="px-5 py-4 border-b border-border">
+        <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
+
+const AUTH_KEY = "analytics_key";
+
+async function authedFetch<T>(url: string): Promise<T> {
+  const key = sessionStorage.getItem(AUTH_KEY) ?? "";
+  const res = await fetch(url, { headers: { "x-analytics-key": key }, credentials: "include" });
+  if (!res.ok) {
+    const err = new Error(`${res.status}`) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  return res.json() as Promise<T>;
+}
+
+function AnalyticsDashboard({ onUnauthorized }: { onUnauthorized: () => void }) {
   const { data, isLoading, error } = useQuery<AnalyticsSummary>({
     queryKey: ["/api/analytics"],
+    queryFn: () => authedFetch<AnalyticsSummary>("/api/analytics"),
   });
-
   const { data: pageviewData } = useQuery<{ count: number }>({
     queryKey: ["/api/analytics/pageviews"],
+    queryFn: () => authedFetch<{ count: number }>("/api/analytics/pageviews"),
   });
+
+  // A rotated/incorrect key surfaces as a 401 on the data request — drop the
+  // stored key and fall back to the login form rather than showing an error.
+  useEffect(() => {
+    if ((error as { status?: number } | null)?.status === 401) {
+      sessionStorage.removeItem(AUTH_KEY);
+      onUnauthorized();
+    }
+  }, [error, onUnauthorized]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground font-medium">Loading analytics…</p>
+      <div className="min-h-screen bg-background">
+        <TopNav suffix="Analytics" />
+        <div className="flex items-center justify-center py-40">
+          <div className="text-center">
+            <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground font-medium text-sm">Loading analytics…</p>
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md rounded-2xl shadow-sm border-border/60">
-          <CardContent className="pt-6 text-center">
-            <p className="text-destructive font-medium">Failed to load analytics</p>
-          </CardContent>
-        </Card>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar — frosted glass */}
-      <div className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl overflow-hidden shadow-sm">
-              <img src="/logo-mark.svg" alt="AuditDocs" className="h-full w-full" />
-            </div>
-            <span className="font-semibold text-[15px] tracking-tight">AuditDocs Analytics</span>
-          </div>
-          <Link
-            href="/"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5"
-            data-testid="link-back-auditor"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Link>
+      <TopNav suffix="Analytics" />
+
+      <PageContainer className="py-10">
+        <div className="mb-8">
+          <SectionLabel>Platform</SectionLabel>
+          <h1 className="text-2xl font-semibold tracking-tight mt-1">Analytics</h1>
+          <p className="text-sm text-muted-foreground mt-1">Aggregate performance across every documentation audit.</p>
         </div>
-      </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-12">
-        {!data || data.totalAudits === 0 ? (
-          <Card className="text-center py-20 rounded-2xl shadow-sm border-border/60">
-            <CardContent>
-              <BarChart3 className="w-10 h-10 mx-auto mb-4 text-muted-foreground/40" />
-              <h2 className="text-xl font-bold tracking-tight mb-2">No data yet</h2>
-              <p className="text-muted-foreground max-w-sm mx-auto text-sm leading-relaxed">
-                Run some audits to start collecting analytics. Each audit is tracked here.
-              </p>
-            </CardContent>
-          </Card>
+        {error ? (
+          <div className="rounded-xl border border-border bg-card shadow-sm max-w-md py-12 px-6 text-center">
+            <p className="text-destructive font-medium text-sm">Failed to load analytics</p>
+          </div>
+        ) : !data || data.totalAudits === 0 ? (
+          <div className="rounded-xl border border-border bg-card shadow-sm text-center py-20">
+            <BarChart3 className="w-10 h-10 mx-auto mb-4 text-muted-foreground/40" />
+            <h2 className="text-lg font-semibold tracking-tight mb-2">No data yet</h2>
+            <p className="text-muted-foreground max-w-sm mx-auto text-sm leading-relaxed">
+              Run some audits to start collecting analytics. Each audit is tracked here.
+            </p>
+          </div>
         ) : (
-          <div className="space-y-8">
-            {/* Stat cards */}
+          <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard icon={BarChart3} label="Total Audits" value={data.totalAudits} />
-              <StatCard icon={TrendingUp} label="Average Score" value={data.avgScore} subtext="out of 100" />
-              <StatCard icon={Globe} label="Unique Domains" value={data.topDomains.length} />
-              <StatCard icon={Eye} label="Page Views" value={pageviewData?.count ?? "—"} />
+              <StatCard icon={BarChart3} label="Total audits" value={data.totalAudits.toLocaleString()} />
+              <StatCard icon={TrendingUp} label="Average score" value={data.avgScore} subtext="out of 100" />
+              <StatCard icon={Globe} label="Unique domains" value={data.topDomains.length} />
+              <StatCard icon={Eye} label="Page views" value={pageviewData?.count?.toLocaleString() ?? "—"} />
             </div>
 
-            {/* Score distribution */}
-            <Card className="rounded-2xl shadow-sm border-border/60">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-base font-semibold tracking-tight">Score Distribution</CardTitle>
-                <CardDescription>How audited sites are performing overall</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScoreDistributionBar distribution={data.scoreDistribution} />
-              </CardContent>
-            </Card>
+            <Panel title="Score distribution" description="How audited sites are performing overall">
+              <ScoreDistributionBar distribution={data.scoreDistribution} />
+            </Panel>
 
-            {/* Tables */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <Card className="rounded-2xl shadow-sm border-border/60">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-base font-semibold tracking-tight">Top Domains</CardTitle>
-                  <CardDescription>Most frequently audited</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {data.topDomains.map((domain, idx) => (
-                      <div key={domain.domain} className="flex items-center justify-between py-1">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-sm text-muted-foreground/60 font-medium tabular-nums w-4 shrink-0">{idx + 1}</span>
-                          <span className="font-medium text-sm truncate">{domain.domain}</span>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0 ml-3">
-                          <span className="text-xs text-muted-foreground">{domain.count} audits</span>
-                          <ScorePill score={domain.avgScore} />
+            <div className="grid md:grid-cols-2 gap-5">
+              <Panel title="Top domains" description="Most frequently audited">
+                <div className="divide-y divide-border -my-1">
+                  {data.topDomains.map((domain, idx) => (
+                    <div key={domain.domain} className="flex items-center justify-between py-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-[11px] text-muted-foreground/50 font-mono tabular-nums w-4 shrink-0">{idx + 1}</span>
+                        <span className="font-medium text-[13px] truncate">{domain.domain}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 ml-3">
+                        <span className="text-[11px] text-muted-foreground tabular-nums">{domain.count} audits</span>
+                        <ScoreBadge score={domain.avgScore} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              <Panel title="Recent audits" description="Latest documentation audits">
+                <div className="divide-y divide-border -my-1">
+                  {data.recentAudits.slice(0, 8).map((audit) => (
+                    <div key={audit.id} className="flex items-center justify-between py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-[13px] truncate">{audit.domain}</div>
+                        <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5 tabular-nums">
+                          <Clock className="w-3 h-3" />
+                          {new Date(audit.createdAt).toLocaleDateString()}
+                          <span className="text-muted-foreground/40">·</span>
+                          {audit.crawledPages} pages
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-2xl shadow-sm border-border/60">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-base font-semibold tracking-tight">Recent Audits</CardTitle>
-                  <CardDescription>Latest documentation audits</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {data.recentAudits.slice(0, 8).map((audit) => (
-                      <div key={audit.id} className="flex items-center justify-between py-1">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">{audit.domain}</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                            <Clock className="w-3 h-3" />
-                            {new Date(audit.createdAt).toLocaleDateString()}
-                            <span className="text-muted-foreground/40">·</span>
-                            {audit.crawledPages} pages
-                          </div>
-                        </div>
-                        <ScorePill score={audit.score} />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      <ScoreBadge score={audit.score} />
+                    </div>
+                  ))}
+                </div>
+              </Panel>
             </div>
           </div>
         )}
+      </PageContainer>
+    </div>
+  );
+}
+
+function AnalyticsLogin({ onSuccess }: { onSuccess: () => void }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/analytics/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
+        // Store the password itself — the dashboard's data requests send it as
+        // the x-analytics-key header, which is where access is actually enforced.
+        sessionStorage.setItem(AUTH_KEY, password);
+        onSuccess();
+        return;
+      }
+      const body = await res.json().catch(() => ({}));
+      setError(body.message || (res.status === 401 ? "Incorrect password." : "Unable to verify."));
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <TopNav suffix="Analytics" showNav={false} />
+      <div className="flex items-center justify-center px-4 py-32">
+        <form
+          onSubmit={submit}
+          className="w-full max-w-sm rounded-xl border border-border bg-card shadow-sm p-6"
+        >
+          <div className="flex items-center justify-center w-11 h-11 rounded-lg bg-muted border border-border mx-auto mb-4">
+            <Lock className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <h1 className="text-lg font-semibold tracking-tight text-center">Restricted</h1>
+          <p className="text-sm text-muted-foreground text-center mt-1 mb-5">
+            The analytics dashboard is private. Enter the password to continue.
+          </p>
+          <input
+            type="password"
+            autoFocus
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            aria-label="Analytics password"
+            className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          {error && <p className="text-destructive text-xs mt-2">{error}</p>}
+          <button
+            type="submit"
+            disabled={submitting || !password}
+            className="mt-4 w-full h-10 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
+          >
+            {submitting ? "Verifying…" : "Unlock"}
+          </button>
+        </form>
       </div>
     </div>
   );
+}
+
+export default function Analytics() {
+  const [authed, setAuthed] = useState(() => !!sessionStorage.getItem(AUTH_KEY));
+  if (!authed) return <AnalyticsLogin onSuccess={() => setAuthed(true)} />;
+  return <AnalyticsDashboard onUnauthorized={() => setAuthed(false)} />;
 }
