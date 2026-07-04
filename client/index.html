@@ -20,8 +20,79 @@
     <meta name="description" content="AuditDocs audits documentation for AI discoverability, retrieval readiness, and agent usability, then returns a score out of 100 with prioritized fixes." />
     <meta name="keywords" content="documentation audit, AI discoverability, llms.txt, docs QA, SEO for AI agents" />
     <meta name="author" content="AuditDocs" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#1d4ed8" />
+
+    <!-- Structured data for search engines and AI answer engines. Static so it
+         is present in the raw HTML (no JS execution required to read it). -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "AuditDocs",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "url": "/",
+        "description": "Free tool that tests how ready your documentation is for AI systems — LLMs, answer engines, and agents — and returns a 0–100 score across four categories with prioritized fixes.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "AI crawl accessibility check (llms.txt, robots.txt, sitemap)",
+          "Structured data and machine readability check (JSON-LD, OpenAPI)",
+          "Content self-containment and chunking analysis",
+          "Documentation architecture and heading structure analysis"
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "AuditDocs",
+        "url": "/",
+        "description": "The AI readiness test for documentation."
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "AuditDocs",
+        "url": "/",
+        "logo": "/logo-mark.svg"
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is documentation AI readiness?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Documentation AI readiness measures how easily AI systems — large language models, answer engines, and agents — can discover, crawl, parse, retrieve, and cite your documentation. AuditDocs scores it across four categories: AI crawl accessibility, structured data and machine readability, content self-containment, and documentation architecture."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is AuditDocs free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. AuditDocs is free and requires no signup. Enter a documentation URL and it returns a 0–100 AI readiness score with prioritized fixes in about a minute."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does the AI readiness check work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "AuditDocs crawls multiple pages of your documentation and evaluates them across four equally weighted categories, then normalizes the result to a 0–100 score with severity-graded, actionable findings."
+            }
+          }
+        ]
+      }
+    </script>
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="AuditDocs" />

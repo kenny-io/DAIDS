@@ -4,6 +4,7 @@ import { runAudit, AuditConfigSchema } from "./audit";
 import { analyticsStore } from "./analytics";
 import { generateMarkdown, generatePDF } from "./export";
 import { escapeHtml } from "./og";
+import { registerSeoRoutes } from "./seo";
 import { z } from "zod";
 import type { ShowcaseSortBy, SortDirection } from "@shared/analytics-types";
 
@@ -80,6 +81,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // SEO/AEO/GEO surface: server-rendered robots.txt, sitemap.xml, llms.txt, and
+  // the /blog content hub. Registered before the static/SPA fallback so these
+  // clean URLs return real HTML that AI crawlers can read without executing JS.
+  registerSeoRoutes(app);
+
   // Crawler interception: return static OG meta tags for social previews on audit pages
   app.get("/audit/:id", async (req: Request, res: Response, next: NextFunction) => {
     const ua = req.headers["user-agent"] || "";
